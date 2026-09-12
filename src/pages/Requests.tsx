@@ -10,12 +10,14 @@ import { Select } from "@/components/ui/select";
 import { Link } from "react-router-dom";
 import { formatMoney } from "@/lib/money";
 import { useRealtime } from "@/hooks/useRealtime";
+import { useLang } from "@/i18n/LanguageContext";
 
 const STATUSES = ["all", "pending", "approved", "rejected", "reconciled"] as const;
 const CATEGORIES = ["all", "groceries", "transport", "dining", "utilities", "health", "other"] as const;
 
 export default function Requests(){
   useRealtime();
+  const { t } = useLang();
   const [q, setQ] = React.useState("");
   const [status, setStatus] = React.useState<(typeof STATUSES)[number]>("all");
   const [category, setCategory] = React.useState<(typeof CATEGORIES)[number]>("all");
@@ -36,26 +38,26 @@ export default function Requests(){
   }, [data, q, status, category]);
 
   return <div className="space-y-4">
-    <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Reimbursement Requests</h1><Link to="/requests/new"><Button>New request</Button></Link></div>
-    <Card><CardHeader><CardTitle>All requests</CardTitle></CardHeader><CardContent>
+    <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">{t("req.title")}</h1><Link to="/requests/new"><Button>{t("req.new")}</Button></Link></div>
+    <Card><CardHeader><CardTitle>{t("req.all")}</CardTitle></CardHeader><CardContent>
       <div className="flex flex-wrap gap-2 mb-4">
-        <Input placeholder="Search merchant or note…" value={q} onChange={(e)=>setQ(e.target.value)} className="max-w-xs" />
-        <Select value={status} onChange={(e)=>setStatus(e.target.value as typeof status)} aria-label="Filter by status">
-          {STATUSES.map((s)=><option key={s} value={s}>{s === "all" ? "All statuses" : s}</option>)}
+        <Input placeholder={t("req.searchPh")} value={q} onChange={(e)=>setQ(e.target.value)} className="max-w-xs" />
+        <Select value={status} onChange={(e)=>setStatus(e.target.value as typeof status)} aria-label={t("req.status")}>
+          {STATUSES.map((s)=><option key={s} value={s}>{s === "all" ? t("req.allStatuses") : s}</option>)}
         </Select>
-        <Select value={category} onChange={(e)=>setCategory(e.target.value as typeof category)} aria-label="Filter by category">
-          {CATEGORIES.map((c)=><option key={c} value={c}>{c === "all" ? "All categories" : c}</option>)}
+        <Select value={category} onChange={(e)=>setCategory(e.target.value as typeof category)} aria-label={t("req.category")}>
+          {CATEGORIES.map((c)=><option key={c} value={c}>{c === "all" ? t("req.allCategories") : c}</option>)}
         </Select>
         {(q || status !== "all" || category !== "all") && (
-          <Button variant="outline" onClick={()=>{ setQ(""); setStatus("all"); setCategory("all"); setVisible(20); }}>Clear</Button>
+          <Button variant="outline" onClick={()=>{ setQ(""); setStatus("all"); setCategory("all"); setVisible(20); }}>{t("req.clear")}</Button>
         )}
       </div>
-      {isLoading ? <div className="text-sm text-muted-foreground">Loading…</div> :
-      <Table><TableHeader><TableRow><TableHead>Merchant</TableHead><TableHead>Category</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+      {isLoading ? <div className="text-sm text-muted-foreground">{t("common.loading")}</div> :
+      <Table><TableHeader><TableRow><TableHead>{t("req.merchant")}</TableHead><TableHead>{t("req.category")}</TableHead><TableHead>{t("req.amount")}</TableHead><TableHead>{t("req.status")}</TableHead><TableHead>{t("req.date")}</TableHead></TableRow></TableHeader>
       <TableBody>{filtered?.slice(0, visible).map(r=> <TableRow key={r.id}><TableCell><Link to={`/requests/${r.id}`} className="text-primary underline">{r.merchant ?? "—"}</Link></TableCell><TableCell>{r.category}</TableCell><TableCell>{formatMoney(Number(r.amount))}</TableCell><TableCell><Badge variant={r.status as never}>{r.status}</Badge></TableCell><TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell></TableRow>)}
-      {filtered?.length===0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">{(data?.length ?? 0) === 0 ? "No requests — submit one" : "No requests match these filters"}</TableCell></TableRow>}
+      {filtered?.length===0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">{(data?.length ?? 0) === 0 ? t("req.none") : t("req.noMatch")}</TableCell></TableRow>}
       </TableBody></Table>}
-      {(filtered?.length ?? 0) > visible && <Button variant="outline" className="mt-3" onClick={()=>setVisible((v)=>v + 20)}>Show more ({(filtered?.length ?? 0) - visible} remaining)</Button>}
+      {(filtered?.length ?? 0) > visible && <Button variant="outline" className="mt-3" onClick={()=>setVisible((v)=>v + 20)}>{t("req.showMore", { remaining: (filtered?.length ?? 0) - visible })}</Button>}
     </CardContent></Card>
   </div>;
 }

@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 import { analyzeBudget, cumulativeSpendSeries } from "@/lib/insights";
+import { useLang } from "@/i18n/LanguageContext";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function BudgetDetail(){
   const { id } = useParams();
+  const { t } = useLang();
   const { data: budget } = useQuery({ queryKey:["budgets",id], queryFn: async()=>{
     const { data, error } = await supabase.from("budgets").select("*").eq("id",id!).single(); if(error) throw error; return data;
   }});
@@ -35,11 +37,11 @@ export default function BudgetDetail(){
     const blob = new Blob([csv],{type:"text/csv"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`reconciliation-${id}.csv`; a.click(); URL.revokeObjectURL(url);
   };
 
-  if(!budget) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
+  if(!budget) return <div className="p-4 text-sm text-muted-foreground">{t("common.loading")}</div>;
   return <div className="space-y-6">
-    <div className="flex justify-between"><div><h1 className="text-2xl font-bold">{budget.name}</h1><p className="text-sm text-muted-foreground">{formatMoney(Number(budget.total_amount),budget.currency)} total • {formatMoney(Number(budget.allocated_amount),budget.currency)} allocated • {formatMoney(Number(budget.available_amount),budget.currency)} available</p></div><Button variant="outline" onClick={exportCsv}>Export CSV</Button></div>
+    <div className="flex justify-between"><div><h1 className="text-2xl font-bold">{budget.name}</h1><p className="text-sm text-muted-foreground">{formatMoney(Number(budget.total_amount),budget.currency)} total • {formatMoney(Number(budget.allocated_amount),budget.currency)} allocated • {formatMoney(Number(budget.available_amount),budget.currency)} available</p></div><Button variant="outline" onClick={exportCsv}>{t("bd.export")}</Button></div>
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2">AI Analysis <Badge variant="secondary">{insights.movementCount} movements</Badge></CardTitle></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2">{t("bd.aiTitle")} <Badge variant="secondary">{t("bd.movements", { n: insights.movementCount })}</Badge></CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <ul className="space-y-1 text-sm">
           {insights.narrative.map((line, i) => <li key={i} className="flex gap-2"><span className="text-primary">•</span><span>{line}</span></li>)}
@@ -59,16 +61,16 @@ export default function BudgetDetail(){
         </div>}
       </CardContent>
     </Card>
-    <Card><CardHeader><CardTitle>Ledger (append-only)</CardTitle></CardHeader><CardContent>
-      <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Debit</TableHead><TableHead>Credit</TableHead><TableHead>Description</TableHead></TableRow></TableHeader>
+    <Card><CardHeader><CardTitle>{t("bd.ledger")}</CardTitle></CardHeader><CardContent>
+      <Table><TableHeader><TableRow><TableHead>{t("bd.date")}</TableHead><TableHead>{t("bd.type")}</TableHead><TableHead>{t("bd.debit")}</TableHead><TableHead>{t("bd.credit")}</TableHead><TableHead>{t("bd.description")}</TableHead></TableRow></TableHeader>
       <TableBody>{ledger?.map(l=> <TableRow key={l.id}><TableCell>{new Date(l.created_at).toLocaleString()}</TableCell><TableCell>{l.reference_type}</TableCell><TableCell>{l.debit>0?formatMoney(Number(l.debit),budget.currency):"-"}</TableCell><TableCell>{l.credit>0?formatMoney(Number(l.credit),budget.currency):"-"}</TableCell><TableCell>{l.description}</TableCell></TableRow>)}
-      {ledger?.length===0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No ledger entries — reconcile approved requests to generate entries</TableCell></TableRow>}
+      {ledger?.length===0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">{t("bd.noLedger")}</TableCell></TableRow>}
       </TableBody></Table>
     </CardContent></Card>
-    <Card><CardHeader><CardTitle>Requests in this budget</CardTitle></CardHeader><CardContent>
-      <Table><TableHeader><TableRow><TableHead>Merchant</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+    <Card><CardHeader><CardTitle>{t("bd.requestsIn")}</CardTitle></CardHeader><CardContent>
+      <Table><TableHeader><TableRow><TableHead>{t("bd.merchant")}</TableHead><TableHead>{t("bd.amount")}</TableHead><TableHead>{t("bd.status")}</TableHead><TableHead>{t("bd.date")}</TableHead></TableRow></TableHeader>
       <TableBody>{requests?.map(r=> <TableRow key={r.id}><TableCell>{r.merchant ?? r.category}</TableCell><TableCell>{formatMoney(Number(r.amount),budget.currency)}</TableCell><TableCell>{r.status}</TableCell><TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell></TableRow>)}
-      {requests?.length===0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No requests</TableCell></TableRow>}
+      {requests?.length===0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">{t("bd.noRequests")}</TableCell></TableRow>}
       </TableBody></Table>
     </CardContent></Card>
   </div>;

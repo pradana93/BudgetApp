@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { LanguageProvider } from "@/i18n/LanguageContext";
 import { SessionProvider } from "@/hooks/useSession";
 import { ToastProvider } from "@/components/ui/toast";
 import { Layout } from "@/components/Layout";
@@ -20,6 +21,7 @@ const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWin
 
 export default function App(){
   return <QueryClientProvider client={qc}>
+    <LanguageProvider>
     <SessionProvider>
       <ToastProvider>
         <BrowserRouter>
@@ -40,5 +42,6 @@ export default function App(){
         </BrowserRouter>
       </ToastProvider>
     </SessionProvider>
+    </LanguageProvider>
   </QueryClientProvider>;
 }

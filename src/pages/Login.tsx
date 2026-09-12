@@ -9,16 +9,22 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useSession } from "@/hooks/useSession";
-import { loginSchema, type LoginForm } from "@/schemas/auth";
+import { useLang } from "@/i18n/LanguageContext";
+import { getLoginSchema, type LoginForm } from "@/schemas/auth";
 
 export default function Login() {
   const { toast } = useToast();
+  const { t } = useLang();
   const nav = useNavigate();
   const { session } = useSession();
   const [serverError, setServerError] = React.useState<string | null>(null);
 
+  const schema = React.useMemo(
+    () => getLoginSchema({ emailRequired: t("v.emailRequired"), emailInvalid: t("v.emailInvalid"), passwordRequired: t("v.passwordRequired") }),
+    [t]
+  );
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(schema),
     defaultValues: { email: "owner@budgetapp.local", password: "password123" },
   });
 
@@ -34,9 +40,9 @@ export default function Login() {
     });
     if (error) {
       setServerError(error.message);
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      toast({ title: t("login.failed"), description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Signed in", description: values.email.trim() });
+      toast({ title: t("login.signedIn"), description: values.email.trim() });
       nav("/");
     }
   };
@@ -45,33 +51,33 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-muted/20 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>BudgetApp Login</CardTitle>
-          <CardDescription>Email + password (owner/member). Supabase Auth.</CardDescription>
+          <CardTitle>{t("login.title")}</CardTitle>
+          <CardDescription>{t("login.desc")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("login.email")}</Label>
               <Input id="email" type="email" autoComplete="email" placeholder="owner@budgetapp.local" {...register("email")} />
               {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("login.password")}</Label>
               <Input id="password" type="password" autoComplete="current-password" {...register("password")} />
               {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
             </div>
             {serverError && <p className="text-sm text-destructive">{serverError}</p>}
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in…" : "Sign in"}
+              {isSubmitting ? t("login.signingIn") : t("login.submit")}
             </Button>
             <p className="text-sm text-center text-muted-foreground">
-              No account yet?{" "}
+              {t("login.noAccount")}{" "}
               <Link to="/register" className="text-primary underline">
-                Create account
+                {t("login.createAccount")}
               </Link>
             </p>
             <p className="text-xs text-muted-foreground">
-              Seed accounts: <b>owner@budgetapp.local</b> / <b>member@budgetapp.local</b> — password you set. See docs/REPORT.md for invite flow.
+              {t("login.seedA")} <b>owner@budgetapp.local</b> / <b>member@budgetapp.local</b> {t("login.seedB")}
             </p>
           </form>
         </CardContent>
