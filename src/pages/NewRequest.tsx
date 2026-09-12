@@ -19,7 +19,7 @@ export default function NewRequest(){
   const { toast } = useToast();
   const { t } = useLang();
   const nav = useNavigate();
-  const [form,setForm]=React.useState({ budget_id:"", amount:"", category:"groceries" as const, merchant:"", description:"" });
+  const [form,setForm]=React.useState({ budget_id:"", amount:"", category:"groceries" as const, merchant:"", description:"", due_date:"" });
   const [file,setFile]=React.useState<File|null>(null);
   const [err,setErr]=React.useState<string|null>(null);
 
@@ -36,7 +36,7 @@ export default function NewRequest(){
     const parsed = schema.parse(form);
     // create request first to get id
     const { data, error } = await supabase.from("reimbursement_requests").insert({
-      budget_id: parsed.budget_id, requester_id: profile!.id, amount: Number(parsed.amount), category: parsed.category, merchant: parsed.merchant||null, description: parsed.description||null
+      budget_id: parsed.budget_id, requester_id: profile!.id, amount: Number(parsed.amount), category: parsed.category, merchant: parsed.merchant||null, description: parsed.description||null, due_date: parsed.due_date || null
     }).select().single();
     if(error) throw error;
     // upload receipt if present
@@ -64,6 +64,7 @@ export default function NewRequest(){
         <div><Label>{t("new.category")}</Label><Select value={form.category} onChange={e=>setForm({...form,category:e.target.value as never})}><option value="groceries">groceries</option><option value="transport">transport</option><option value="dining">dining</option><option value="utilities">utilities</option><option value="health">health</option><option value="other">other</option></Select></div>
         <div><Label>{t("new.merchant")}</Label><Input value={form.merchant} onChange={e=>setForm({...form,merchant:e.target.value})} placeholder={t("new.merchantPh")} /></div>
         <div><Label>{t("new.description")}</Label><Textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder={t("new.descPh")} /></div>
+        <div><Label>{t("new.dueDate")}</Label><Input type="date" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})} /></div>
         <div><Label>{t("new.receipt")}</Label><Input type="file" accept="image/*,application/pdf" onChange={e=>setFile(e.target.files?.[0]??null)} /></div>
         {err && <div className="text-sm text-destructive">{err}</div>}
         <Button type="submit" disabled={mut.isPending} className="w-full">{mut.isPending?t("new.submitting"):t("new.submit")}</Button>

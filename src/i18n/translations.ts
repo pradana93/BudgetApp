@@ -77,6 +77,7 @@ const en = {
   "dash.noRequests": "No requests",
   "dash.byStatus": "Requests by status",
   "dash.noRequestsYet": "No requests yet",
+  "dash.trend": "Monthly volume",
 
   "budgets.title": "Budgets",
   "budgets.new": "New budget",
@@ -104,6 +105,10 @@ const en = {
   "budgets.creating": "Creating…",
   "budgets.noBudgets": "No budgets yet",
   "budgets.usedPct": "{pct}% used",
+  "budgets.searchPh": "Search budgets…",
+  "budgets.export": "Export CSV",
+  "budgets.currency": "Currency",
+  "budgets.fTotalAmt": "Total amount",
 
   "req.title": "Reimbursement Requests",
   "req.new": "New request",
@@ -120,6 +125,8 @@ const en = {
   "req.none": "No requests — submit one",
   "req.noMatch": "No requests match these filters",
   "req.showMore": "Show more ({remaining} remaining)",
+  "req.due": "Due",
+  "req.overdue": "Overdue",
 
   "new.title": "New reimbursement request",
   "new.details": "Details",
@@ -137,6 +144,7 @@ const en = {
   "new.submitting": "Submitting…",
   "new.submitted": "Request submitted",
   "new.failed": "Failed",
+  "new.dueDate": "Due date (optional)",
 
   "rd.request": "Request",
   "rd.amount": "Amount",
@@ -177,6 +185,9 @@ const en = {
   "rd.deleting": "Deleting…",
   "rd.deleted": "Request deleted",
   "rd.deleteFailed": "Delete failed",
+  "rd.dueDate": "Due date",
+  "rd.noDue": "No due date",
+  "rd.overdue": "Overdue",
 
   "bd.ledger": "Ledger (append-only)",
   "bd.date": "Date",
@@ -193,6 +204,13 @@ const en = {
   "bd.export": "Export CSV",
   "bd.aiTitle": "AI Analysis",
   "bd.movements": "{n} movements",
+  "bd.burnRate": "Burn rate (30d)",
+  "bd.runway": "Runway",
+  "bd.pendingExp": "Pending exposure",
+  "bd.largest": "Largest spend",
+  "bd.days": "~{n} days",
+  "bd.attention": "Needs attention",
+  "bd.topCats": "Top categories",
 
   "admin.title": "Admin Panel",
   "admin.sub": "Owner command center — approvals, budgets, ledger, users.",
@@ -363,6 +381,7 @@ const id: Record<StringKey, string> = {
   "dash.noRequests": "Tidak ada permintaan",
   "dash.byStatus": "Permintaan per status",
   "dash.noRequestsYet": "Belum ada permintaan",
+  "dash.trend": "Volume bulanan",
 
   "budgets.title": "Anggaran",
   "budgets.new": "Anggaran baru",
@@ -390,6 +409,10 @@ const id: Record<StringKey, string> = {
   "budgets.creating": "Membuat…",
   "budgets.noBudgets": "Belum ada anggaran",
   "budgets.usedPct": "{pct}% terpakai",
+  "budgets.searchPh": "Cari anggaran…",
+  "budgets.export": "Ekspor CSV",
+  "budgets.currency": "Mata uang",
+  "budgets.fTotalAmt": "Total nominal",
 
   "req.title": "Permintaan Reimbursement",
   "req.new": "Permintaan baru",
@@ -406,6 +429,8 @@ const id: Record<StringKey, string> = {
   "req.none": "Belum ada permintaan — ajukan satu",
   "req.noMatch": "Tidak ada permintaan yang cocok dengan filter",
   "req.showMore": "Tampilkan lagi ({remaining} tersisa)",
+  "req.due": "Jatuh tempo",
+  "req.overdue": "Terlambat",
 
   "new.title": "Permintaan reimbursement baru",
   "new.details": "Detail",
@@ -423,6 +448,7 @@ const id: Record<StringKey, string> = {
   "new.submitting": "Mengirim…",
   "new.submitted": "Permintaan terkirim",
   "new.failed": "Gagal",
+  "new.dueDate": "Tanggal jatuh tempo (opsional)",
 
   "rd.request": "Permintaan",
   "rd.amount": "Nominal",
@@ -463,6 +489,9 @@ const id: Record<StringKey, string> = {
   "rd.deleting": "Menghapus…",
   "rd.deleted": "Permintaan dihapus",
   "rd.deleteFailed": "Penghapusan gagal",
+  "rd.dueDate": "Jatuh tempo",
+  "rd.noDue": "Tanpa jatuh tempo",
+  "rd.overdue": "Terlambat",
 
   "bd.ledger": "Ledger (hanya-tambah)",
   "bd.date": "Tanggal",
@@ -479,6 +508,13 @@ const id: Record<StringKey, string> = {
   "bd.export": "Ekspor CSV",
   "bd.aiTitle": "Analisis AI",
   "bd.movements": "{n} pergerakan",
+  "bd.burnRate": "Laju pengeluaran (30 hari)",
+  "bd.runway": "Daya tahan",
+  "bd.pendingExp": "Eksposur menunggu",
+  "bd.largest": "Pengeluaran terbesar",
+  "bd.days": "~{n} hari",
+  "bd.attention": "Perlu perhatian",
+  "bd.topCats": "Kategori teratas",
 
   "admin.title": "Panel Admin",
   "admin.sub": "Pusat komando owner — persetujuan, anggaran, ledger, pengguna.",

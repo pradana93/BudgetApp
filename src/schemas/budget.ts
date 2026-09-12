@@ -30,6 +30,7 @@ export function getRequestSchema(m: BudgetMessages = {}) {
     category: z.enum(["groceries","transport","dining","utilities","health","other"]),
     merchant: z.string().max(200).optional().nullable(),
     description: z.string().max(1000).optional().nullable(),
+    due_date: z.string().optional().nullable(),
   });
 }
 

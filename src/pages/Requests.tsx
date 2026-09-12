@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Link } from "react-router-dom";
 import { formatMoney } from "@/lib/money";
+import { formatDate, isOverdue } from "@/lib/datetime";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
 
@@ -17,7 +18,7 @@ const CATEGORIES = ["all", "groceries", "transport", "dining", "utilities", "hea
 
 export default function Requests(){
   useRealtime();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [q, setQ] = React.useState("");
   const [status, setStatus] = React.useState<(typeof STATUSES)[number]>("all");
   const [category, setCategory] = React.useState<(typeof CATEGORIES)[number]>("all");
@@ -53,9 +54,9 @@ export default function Requests(){
         )}
       </div>
       {isLoading ? <div className="text-sm text-muted-foreground">{t("common.loading")}</div> :
-      <Table><TableHeader><TableRow><TableHead>{t("req.merchant")}</TableHead><TableHead>{t("req.category")}</TableHead><TableHead>{t("req.amount")}</TableHead><TableHead>{t("req.status")}</TableHead><TableHead>{t("req.date")}</TableHead></TableRow></TableHeader>
-      <TableBody>{filtered?.slice(0, visible).map(r=> <TableRow key={r.id}><TableCell><Link to={`/requests/${r.id}`} className="text-primary underline">{r.merchant ?? "—"}</Link></TableCell><TableCell>{r.category}</TableCell><TableCell>{formatMoney(Number(r.amount))}</TableCell><TableCell><Badge variant={r.status as never}>{r.status}</Badge></TableCell><TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell></TableRow>)}
-      {filtered?.length===0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">{(data?.length ?? 0) === 0 ? t("req.none") : t("req.noMatch")}</TableCell></TableRow>}
+      <Table><TableHeader><TableRow><TableHead>{t("req.merchant")}</TableHead><TableHead>{t("req.category")}</TableHead><TableHead>{t("req.amount")}</TableHead><TableHead>{t("req.status")}</TableHead><TableHead>{t("req.date")}</TableHead><TableHead>{t("req.due")}</TableHead></TableRow></TableHeader>
+      <TableBody>{filtered?.slice(0, visible).map(r=> <TableRow key={r.id}><TableCell><Link to={`/requests/${r.id}`} className="text-primary underline">{r.merchant ?? "—"}</Link></TableCell><TableCell>{r.category}</TableCell><TableCell>{formatMoney(Number(r.amount))}</TableCell><TableCell><Badge variant={r.status as never}>{r.status}</Badge></TableCell><TableCell>{formatDate(r.created_at, lang)}</TableCell><TableCell className={isOverdue(r.due_date, r.status) ? "text-destructive font-medium" : undefined}>{r.due_date ? formatDate(r.due_date, lang) : "—"}{isOverdue(r.due_date, r.status) ? ` (${t("req.overdue")})` : ""}</TableCell></TableRow>)}
+      {filtered?.length===0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{(data?.length ?? 0) === 0 ? t("req.none") : t("req.noMatch")}</TableCell></TableRow>}
       </TableBody></Table>}
       {(filtered?.length ?? 0) > visible && <Button variant="outline" className="mt-3" onClick={()=>setVisible((v)=>v + 20)}>{t("req.showMore", { remaining: (filtered?.length ?? 0) - visible })}</Button>}
     </CardContent></Card>

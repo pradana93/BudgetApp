@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 import { analyzeBudget, cumulativeSpendSeries } from "@/lib/insights";
+import { dateLocale, formatDate, formatDateTime } from "@/lib/datetime";
 import { useLang } from "@/i18n/LanguageContext";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function BudgetDetail(){
   const { id } = useParams();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { data: budget } = useQuery({ queryKey:["budgets",id], queryFn: async()=>{
     const { data, error } = await supabase.from("budgets").select("*").eq("id",id!).single(); if(error) throw error; return data;
   }});
@@ -25,10 +26,10 @@ export default function BudgetDetail(){
   }});
 
   const insights = React.useMemo(
-    () => analyzeBudget(ledger ?? [], requests ?? [], budget?.available_amount ?? 0, budget?.currency ?? "IDR"),
-    [ledger, requests, budget]
+    () => analyzeBudget(ledger ?? [], requests ?? [], budget?.available_amount ?? 0, budget?.currency ?? "IDR", new Date(), lang),
+    [ledger, requests, budget, lang]
   );
-  const series = React.useMemo(() => cumulativeSpendSeries(ledger ?? []), [ledger]);
+  const series = React.useMemo(() => cumulativeSpendSeries(ledger ?? [], dateLocale(lang)), [ledger, lang]);
 
   const exportCsv = ()=>{
     if(!ledger) return;
@@ -47,13 +48,17 @@ export default function BudgetDetail(){
           {insights.narrative.map((line, i) => <li key={i} className="flex gap-2"><span className="text-primary">•</span><span>{line}</span></li>)}
         </ul>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-          <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">Burn rate (30d)</div><div className="font-bold">{formatMoney(Number(insights.burnRate30d), budget.currency)}/day</div></div>
-          <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">Runway</div><div className="font-bold">{insights.runwayDays === null ? "—" : `~${insights.runwayDays} days`}</div></div>
-          <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">Pending exposure</div><div className="font-bold">{formatMoney(Number(insights.pendingExposure), budget.currency)} ({insights.pendingCount})</div></div>
-          <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">Largest spend</div><div className="font-bold">{insights.largestSpend ? formatMoney(Number(insights.largestSpend.amount), budget.currency) : "—"}</div></div>
+          <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">{t("bd.burnRate")}</div><div className="font-bold">{formatMoney(Number(insights.burnRate30d), budget.currency)}/day</div></div>
+          <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">{t("bd.runway")}</div><div className="font-bold">{insights.runwayDays === null ? "—" : t("bd.days", { n: insights.runwayDays })}</div></div>
+          <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">{t("bd.pendingExp")}</div><div className="font-bold">{formatMoney(Number(insights.pendingExposure), budget.currency)} ({insights.pendingCount})</div></div>
+          <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">{t("bd.largest")}</div><div className="font-bold">{insights.largestSpend ? formatMoney(Number(insights.largestSpend.amount), budget.currency) : "—"}</div></div>
         </div>
+        {insights.topCategories.length > 0 && <div className="space-y-2">
+          <div className="text-sm font-semibold">{t("bd.topCats")}</div>
+          {insights.topCategories.map((c) => <div key={c.name} className="flex items-center gap-2 text-sm"><span className="w-24 truncate">{c.name}</span><div className="h-2 flex-1 rounded bg-muted overflow-hidden"><div className="h-2 rounded bg-primary" style={{ width: `${c.share}%` }} /></div><span className="whitespace-nowrap">{formatMoney(Number(c.total), budget.currency)} ({c.share}%)</span></div>)}
+        </div>}
         {insights.anomalies.length > 0 && <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm space-y-1">
-          <div className="font-semibold">Needs attention</div>
+          <div className="font-semibold">{t("bd.attention")}</div>
           {insights.anomalies.map((a, i) => <div key={i}>• {a}</div>)}
         </div>}
         {series.length > 0 && <div className="h-[220px]">
@@ -63,13 +68,13 @@ export default function BudgetDetail(){
     </Card>
     <Card><CardHeader><CardTitle>{t("bd.ledger")}</CardTitle></CardHeader><CardContent>
       <Table><TableHeader><TableRow><TableHead>{t("bd.date")}</TableHead><TableHead>{t("bd.type")}</TableHead><TableHead>{t("bd.debit")}</TableHead><TableHead>{t("bd.credit")}</TableHead><TableHead>{t("bd.description")}</TableHead></TableRow></TableHeader>
-      <TableBody>{ledger?.map(l=> <TableRow key={l.id}><TableCell>{new Date(l.created_at).toLocaleString()}</TableCell><TableCell>{l.reference_type}</TableCell><TableCell>{l.debit>0?formatMoney(Number(l.debit),budget.currency):"-"}</TableCell><TableCell>{l.credit>0?formatMoney(Number(l.credit),budget.currency):"-"}</TableCell><TableCell>{l.description}</TableCell></TableRow>)}
+      <TableBody>{ledger?.map(l=> <TableRow key={l.id}><TableCell>{formatDateTime(l.created_at, lang)}</TableCell><TableCell>{l.reference_type}</TableCell><TableCell>{l.debit>0?formatMoney(Number(l.debit),budget.currency):"-"}</TableCell><TableCell>{l.credit>0?formatMoney(Number(l.credit),budget.currency):"-"}</TableCell><TableCell>{l.description}</TableCell></TableRow>)}
       {ledger?.length===0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">{t("bd.noLedger")}</TableCell></TableRow>}
       </TableBody></Table>
     </CardContent></Card>
     <Card><CardHeader><CardTitle>{t("bd.requestsIn")}</CardTitle></CardHeader><CardContent>
       <Table><TableHeader><TableRow><TableHead>{t("bd.merchant")}</TableHead><TableHead>{t("bd.amount")}</TableHead><TableHead>{t("bd.status")}</TableHead><TableHead>{t("bd.date")}</TableHead></TableRow></TableHeader>
-      <TableBody>{requests?.map(r=> <TableRow key={r.id}><TableCell>{r.merchant ?? r.category}</TableCell><TableCell>{formatMoney(Number(r.amount),budget.currency)}</TableCell><TableCell>{r.status}</TableCell><TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell></TableRow>)}
+      <TableBody>{requests?.map(r=> <TableRow key={r.id}><TableCell>{r.merchant ?? r.category}</TableCell><TableCell>{formatMoney(Number(r.amount),budget.currency)}</TableCell><TableCell>{r.status}</TableCell><TableCell>{formatDate(r.created_at, lang)}</TableCell></TableRow>)}
       {requests?.length===0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">{t("bd.noRequests")}</TableCell></TableRow>}
       </TableBody></Table>
     </CardContent></Card>

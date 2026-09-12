@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { formatMoney, isValidMoney } from "@/lib/money";
+import { formatDate, isOverdue } from "@/lib/datetime";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
@@ -19,7 +20,7 @@ const CATEGORIES = ["groceries", "transport", "dining", "utilities", "health", "
 export default function RequestDetail(){
   const { id } = useParams();
   const { profile } = useSession();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const isOwner = profile?.role==="owner";
   const qc=useQueryClient(); const { toast }=useToast();
   const nav = useNavigate();
@@ -27,7 +28,7 @@ export default function RequestDetail(){
   const [note,setNote]=React.useState("");
   const [receiptUrl,setReceiptUrl]=React.useState<string|null>(null);
   const [editing,setEditing]=React.useState(false);
-  const [editForm,setEditForm]=React.useState({ amount:"", category:"groceries", merchant:"", description:"" });
+  const [editForm,setEditForm]=React.useState({ amount:"", category:"groceries", merchant:"", description:"", due_date:"" });
   const [editErr,setEditErr]=React.useState<string|null>(null);
   const [confirmDelete,setConfirmDelete]=React.useState(false);
 
@@ -62,7 +63,7 @@ export default function RequestDetail(){
 
   const startEdit = ()=>{
     if(!data) return;
-    setEditForm({ amount: String(data.amount), category: data.category, merchant: data.merchant ?? "", description: data.description ?? "" });
+    setEditForm({ amount: String(data.amount), category: data.category, merchant: data.merchant ?? "", description: data.description ?? "", due_date: data.due_date ?? "" });
     setEditErr(null);
     setEditing(true);
   };
@@ -73,6 +74,7 @@ export default function RequestDetail(){
     const { error } = await supabase.from("reimbursement_requests").update({
       amount: Number(amt), category: editForm.category,
       merchant: editForm.merchant.trim() || null, description: editForm.description.trim() || null,
+      due_date: editForm.due_date || null,
     }).eq("id", id!);
     if(error) throw error;
   }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["requests"]}); setEditing(false); toast({title:t("rd.updated")}); }, onError:(e:Error)=> setEditErr(e.message) });
@@ -90,6 +92,7 @@ export default function RequestDetail(){
     <Card><CardHeader><CardTitle>{t("rd.request")}</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">
       <div className="grid grid-cols-2 gap-3"><div><span className="text-muted-foreground">{t("rd.amount")}</span><div className="font-medium">{formatMoney(Number(data.amount))}</div></div><div><span className="text-muted-foreground">{t("rd.category")}</span><div>{data.category}</div></div></div>
       <div><span className="text-muted-foreground">{t("rd.budgetId")}</span><div className="font-mono text-xs">{data.budget_id}</div></div>
+      <div><span className="text-muted-foreground">{t("rd.dueDate")}</span><div className={isOverdue(data.due_date, data.status) ? "text-destructive font-medium" : undefined}>{data.due_date ? <>{formatDate(data.due_date, lang)}{isOverdue(data.due_date, data.status) && <Badge variant="destructive" className="ml-2">{t("rd.overdue")}</Badge>}</> : t("rd.noDue")}</div></div>
       {data.rejection_reason && <div><span className="text-muted-foreground">{t("rd.rejectReason")}</span><div>{data.rejection_reason}</div></div>}
       {receiptUrl ? <div><Label>{t("rd.receipt")}</Label><a href={receiptUrl} target="_blank" rel="noreferrer" className="text-primary underline block">{t("rd.viewReceipt")}</a><img src={receiptUrl} alt="receipt" className="mt-2 max-h-64 rounded border" onError={e=> (e.currentTarget.style.display="none")} /></div> : data.receipt_url ? <div className="text-muted-foreground">{t("rd.receiptSigning", { path: data.receipt_url })}</div> : <div className="text-muted-foreground">{t("rd.noReceipt")}</div>}
     </CardContent></Card>
@@ -101,6 +104,7 @@ export default function RequestDetail(){
       <div><Label>{t("new.category")}</Label><Select value={editForm.category} onChange={e=>setEditForm({...editForm,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</Select></div>
       <div><Label>{t("new.merchant")}</Label><Input value={editForm.merchant} onChange={e=>setEditForm({...editForm,merchant:e.target.value})} /></div>
       <div><Label>{t("new.description")}</Label><Textarea value={editForm.description} onChange={e=>setEditForm({...editForm,description:e.target.value})} /></div>
+      <div><Label>{t("new.dueDate")}</Label><Input type="date" value={editForm.due_date} onChange={e=>setEditForm({...editForm,due_date:e.target.value})} /></div>
       {editErr && <div className="text-sm text-destructive">{editErr}</div>}
       <div className="flex gap-2"><Button onClick={()=>saveEdit.mutate()} disabled={saveEdit.isPending}>{saveEdit.isPending?t("rd.saving"):t("rd.save")}</Button><Button variant="outline" onClick={()=>setEditing(false)}>{t("common.cancel")}</Button></div>
     </CardContent></Card>}

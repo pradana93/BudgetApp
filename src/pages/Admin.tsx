@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { formatMoney } from "@/lib/money";
+import { formatDate, formatDateTime } from "@/lib/datetime";
 import { useToast } from "@/components/ui/toast";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
@@ -30,7 +31,7 @@ export default function Admin() {
   useRealtime();
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [reasons, setReasons] = React.useState<Record<string, string>>({});
   const [topups, setTopups] = React.useState<Record<string, string>>({});
   const [limit, setLimit] = React.useState(100);
@@ -125,7 +126,7 @@ export default function Admin() {
           <Table><TableHeader><TableRow><TableHead>{t("admin.qRequest")}</TableHead><TableHead>{t("admin.qBudget")}</TableHead><TableHead>{t("admin.qAmount")}</TableHead><TableHead>{t("admin.qReason")}</TableHead><TableHead>{t("admin.qActions")}</TableHead></TableRow></TableHeader>
           <TableBody>{pending.map((r) => (
             <TableRow key={r.id}>
-              <TableCell><Link to={`/requests/${r.id}`} className="text-primary underline">{r.merchant ?? r.category}</Link><div className="text-xs text-muted-foreground">{r.category} • {new Date(r.created_at).toLocaleDateString()}</div></TableCell>
+              <TableCell><Link to={`/requests/${r.id}`} className="text-primary underline">{r.merchant ?? r.category}</Link><div className="text-xs text-muted-foreground">{r.category} • {formatDate(r.created_at, lang)}</div></TableCell>
               <TableCell>{budgetName(r.budget_id)}</TableCell>
               <TableCell>{formatMoney(Number(r.amount))}</TableCell>
               <TableCell><Input placeholder={t("admin.reasonPh")} value={reasons[r.id] ?? ""} onChange={(e) => setReasons({ ...reasons, [r.id]: e.target.value })} className="min-w-[160px]" /></TableCell>
@@ -176,7 +177,7 @@ export default function Admin() {
         <CardContent>
           <Table><TableHeader><TableRow><TableHead>{t("admin.lDate")}</TableHead><TableHead>{t("admin.lBudget")}</TableHead><TableHead>{t("admin.lType")}</TableHead><TableHead>{t("admin.lDebit")}</TableHead><TableHead>{t("admin.lCredit")}</TableHead></TableRow></TableHeader>
           <TableBody>{ledger?.map((l) => (
-            <TableRow key={l.id}><TableCell>{new Date(l.created_at).toLocaleString()}</TableCell><TableCell>{budgetName(l.budget_id)}</TableCell><TableCell>{l.reference_type}</TableCell>
+            <TableRow key={l.id}><TableCell>{formatDateTime(l.created_at, lang)}</TableCell><TableCell>{budgetName(l.budget_id)}</TableCell><TableCell>{l.reference_type}</TableCell>
             <TableCell>{l.debit > 0 ? formatMoney(Number(l.debit)) : "-"}</TableCell><TableCell>{l.credit > 0 ? formatMoney(Number(l.credit)) : "-"}</TableCell></TableRow>))}
           </TableBody></Table>
           {(ledger?.length ?? 0) >= limit && <Button variant="outline" className="mt-3" onClick={()=>setLimit((l)=>l + 100)}>{t("admin.loadMore")}</Button>}

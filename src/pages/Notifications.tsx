@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
+import { formatDateTime } from "@/lib/datetime";
 
 type Notification = { id: string; type: string; title: string; body: string | null; link: string | null; is_read: boolean; created_at: string };
 
 export default function Notifications() {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { t } = useLang();
+  const { t, lang } = useLang();
 
   const { data, isLoading } = useQuery({
     queryKey: ["notifications"],
@@ -45,8 +46,15 @@ export default function Notifications() {
     onError: (e: Error) => toast({ title: t("notif.failed"), description: e.message, variant: "destructive" }),
   });
 
-  const clearRead = useMutation({
-    mutationFn: async () => {
+  const markOne = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["notifications"] }); qc.invalidateQueries({ queryKey: ["notifications-unread"] }); },
+  });
+
+  const clearRead = useMutation({    mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { error } = await supabase.from("notifications").delete().eq("user_id", user.id).eq("is_read", true);
@@ -71,9 +79,9 @@ export default function Notifications() {
         {isLoading && <div className="text-sm text-muted-foreground">{t("common.loading")}</div>}
         {(data?.length ?? 0) === 0 && !isLoading && <div className="text-sm text-muted-foreground">{t("notif.empty")}</div>}
         {data?.map((n) => (
-          <Link key={n.id} to={n.link ?? "/"} className={`flex justify-between gap-3 border-b py-2 text-sm rounded px-2 ${n.is_read ? "opacity-70" : "bg-muted/40"}`}>
+          <Link key={n.id} to={n.link ?? "/"} onClick={() => { if (!n.is_read) markOne.mutate(n.id); }} className={`flex justify-between gap-3 border-b py-2 text-sm rounded px-2 ${n.is_read ? "opacity-70" : "bg-muted/40"}`}>
             <span><span className="font-medium">{n.title}</span><span className="text-muted-foreground"> — {n.body}</span></span>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{new Date(n.created_at).toLocaleString()}</span>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(n.created_at, lang)}</span>
           </Link>
         ))}
       </CardContent></Card>

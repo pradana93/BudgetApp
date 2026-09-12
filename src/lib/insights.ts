@@ -1,6 +1,8 @@
 import Decimal from "decimal.js";
 import { formatMoney } from "./money";
 
+export type InsightLang = "en" | "id";
+
 export type LedgerPoint = {
   created_at: string;
   debit: number | string;
@@ -38,6 +40,45 @@ function sum(values: (number | string)[]): Decimal {
   return values.reduce((acc, v) => acc.add(new Decimal(v || 0)), new Decimal(0));
 }
 
+type Templates = {
+  summary: (movements: number, out: string, inn: string, net: string) => string;
+  burn: (rate: string, days: number | null, available: string) => string;
+  burnZero: () => string;
+  topCategory: (name: string, total: string, share: number) => string;
+  pending: (count: number, exposure: string) => string;
+  anomOversized: (largest: string, avg: string) => string;
+  anomOver: (pending: string, available: string) => string;
+  anomRunway: (days: number) => string;
+  anomEmpty: () => string;
+};
+
+const TEXT: Record<InsightLang, Templates> = {
+  en: {
+    summary: (m, out, inn, net) => `${m} ledger movement(s): ${out} out, ${inn} in (net ${net}).`,
+    burn: (rate, days, available) =>
+      `30-day burn rate is ${rate}/day` + (days !== null ? `, giving ~${days} day(s) of runway on the available ${available}.` : "."),
+    burnZero: () => "No spend in the last 30 days — burn rate is zero.",
+    topCategory: (name, total, share) => `Top category is ${name} at ${total} (${share}% of realized spend).`,
+    pending: (count, exposure) => `${count} pending request(s) could add ${exposure} of exposure once approved.`,
+    anomOversized: (largest, avg) => `Largest movement (${largest}) is ≥2× the average debit (${avg}) — worth a review.`,
+    anomOver: (pending, available) => `Over-committed: pending requests (${pending}) exceed available balance (${available}).`,
+    anomRunway: (days) => `At the current burn rate this budget runs dry in ~${days} day(s). Consider a top-up or slowing approvals.`,
+    anomEmpty: () => "No movements yet — approve and reconcile requests to generate ledger activity.",
+  },
+  id: {
+    summary: (m, out, inn, net) => `${m} pergerakan ledger: ${out} keluar, ${inn} masuk (neto ${net}).`,
+    burn: (rate, days, available) =>
+      `Laju pengeluaran 30 hari adalah ${rate}/hari` + (days !== null ? `, memberi daya tahan ~${days} hari dari saldo tersedia ${available}.` : "."),
+    burnZero: () => "Tidak ada belanja dalam 30 hari terakhir — laju pengeluaran nol.",
+    topCategory: (name, total, share) => `Kategori teratas adalah ${name} sebesar ${total} (${share}% dari belanja terealisasi).`,
+    pending: (count, exposure) => `${count} permintaan menunggu dapat menambah eksposur ${exposure} setelah disetujui.`,
+    anomOversized: (largest, avg) => `Pergerakan terbesar (${largest}) ≥2× rata-rata debit (${avg}) — layak ditinjau.`,
+    anomOver: (pending, available) => `Kelebihan komitmen: permintaan menunggu (${pending}) melebihi saldo tersedia (${available}).`,
+    anomRunway: (days) => `Dengan laju saat ini anggaran habis dalam ~${days} hari. Pertimbangkan top-up atau perlambat persetujuan.`,
+    anomEmpty: () => "Belum ada pergerakan — setujui dan rekonsiliasi permintaan untuk menghasilkan aktivitas ledger.",
+  },
+};
+
 /**
  * Analyze every movement (ledger entries + requests) of a single budget.
  * Pure + deterministic: same inputs always produce the same insights.
@@ -48,8 +89,12 @@ export function analyzeBudget(
   requests: RequestPoint[],
   availableAmount: number | string,
   currency = "IDR",
-  now: Date = new Date()
+  now: Date = new Date(),
+  lang: InsightLang = "en"
 ): BudgetInsights {
+  const t = TEXT[lang] ?? TEXT.en;
+  const money = (v: number) => formatMoney(v, currency);
+
   const debits = ledger.map((l) => new Decimal(l.debit || 0));
   const credits = ledger.map((l) => new Decimal(l.credit || 0));
   const totalDebit = debits.reduce((a, d) => a.add(d), new Decimal(0));
@@ -106,41 +151,32 @@ export function analyzeBudget(
   if (positiveDebits.length >= 3 && largest) {
     const avg = positiveDebits.reduce((a, d) => a.add(d), new Decimal(0)).div(positiveDebits.length);
     if (avg.greaterThan(0) && largest.value.div(avg).greaterThanOrEqualTo(2)) {
-      anomalies.push(
-        `Largest movement (${formatMoney(largest.value.toNumber(), currency)}) is ≥2× the average debit (${formatMoney(avg.toNumber(), currency)}) — worth a review.`
-      );
+      anomalies.push(t.anomOversized(money(largest.value.toNumber()), money(avg.toNumber())));
     }
   }
   if (pendingExposure.greaterThan(available) && pendingExposure.greaterThan(0)) {
-    anomalies.push(
-      `Over-committed: pending requests (${formatMoney(pendingExposure.toNumber(), currency)}) exceed available balance (${formatMoney(available.toNumber(), currency)}).`
-    );
+    anomalies.push(t.anomOver(money(pendingExposure.toNumber()), money(available.toNumber())));
   }
   if (runwayDays !== null && runwayDays <= 7 && burnRate.greaterThan(0)) {
-    anomalies.push(`At the current burn rate this budget runs dry in ~${runwayDays} day(s). Consider a top-up or slowing approvals.`);
+    anomalies.push(t.anomRunway(runwayDays));
   }
   if (ledger.length === 0 && requests.length === 0) {
-    anomalies.push("No movements yet — approve and reconcile requests to generate ledger activity.");
+    anomalies.push(t.anomEmpty());
   }
 
   const narrative: string[] = [];
-  narrative.push(
-    `${ledger.length} ledger movement(s): ${formatMoney(totalDebit.toNumber(), currency)} out, ${formatMoney(totalCredit.toNumber(), currency)} in (net ${formatMoney(netSpend.toNumber(), currency)}).`
-  );
+  narrative.push(t.summary(ledger.length, money(totalDebit.toNumber()), money(totalCredit.toNumber()), money(netSpend.toNumber())));
   if (burnRate.greaterThan(0)) {
-    narrative.push(
-      `30-day burn rate is ${formatMoney(burnRate.toNumber(), currency)}/day` +
-        (runwayDays !== null ? `, giving ~${runwayDays} day(s) of runway on the available ${formatMoney(available.toNumber(), currency)}.` : ".")
-    );
+    narrative.push(t.burn(money(burnRate.toNumber()), runwayDays, money(available.toNumber())));
   } else {
-    narrative.push("No spend in the last 30 days — burn rate is zero.");
+    narrative.push(t.burnZero());
   }
   if (topCategories.length > 0) {
     const top = topCategories[0];
-    narrative.push(`Top category is ${top.name} at ${formatMoney(Number(top.total), currency)} (${top.share}% of realized spend).`);
+    narrative.push(t.topCategory(top.name, money(Number(top.total)), top.share));
   }
   if (pending.length > 0) {
-    narrative.push(`${pending.length} pending request(s) could add ${formatMoney(pendingExposure.toNumber(), currency)} of exposure once approved.`);
+    narrative.push(t.pending(pending.length, money(pendingExposure.toNumber())));
   }
 
   return {
@@ -160,11 +196,14 @@ export function analyzeBudget(
 }
 
 /** Cumulative net-spend series for charts (sorted oldest → newest). */
-export function cumulativeSpendSeries(ledger: LedgerPoint[]): { date: string; cumulative: number }[] {
+export function cumulativeSpendSeries(
+  ledger: LedgerPoint[],
+  locale: string = "en-US"
+): { date: string; cumulative: number }[] {
   const sorted = [...ledger].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   let acc = new Decimal(0);
   return sorted.map((l) => {
     acc = acc.add(new Decimal(l.debit || 0)).sub(new Decimal(l.credit || 0));
-    return { date: new Date(l.created_at).toLocaleDateString(), cumulative: acc.toNumber() };
+    return { date: new Date(l.created_at).toLocaleDateString(locale), cumulative: acc.toNumber() };
   });
 }

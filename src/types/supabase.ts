@@ -14,8 +14,8 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["budgets"]["Insert"]>;
       };
       reimbursement_requests: {
-        Row: { id: string; budget_id: string; requester_id: string; amount: number; category: "groceries" | "transport" | "dining" | "utilities" | "health" | "other"; merchant: string | null; description: string | null; receipt_url: string | null; status: "pending" | "approved" | "rejected" | "reconciled"; reviewed_by: string | null; reviewed_at: string | null; rejection_reason: string | null; created_at: string; updated_at: string };
-        Insert: { id?: string; budget_id: string; requester_id: string; amount: number; category: Database["public"]["Tables"]["reimbursement_requests"]["Row"]["category"]; merchant?: string | null; description?: string | null; receipt_url?: string | null; status?: Database["public"]["Tables"]["reimbursement_requests"]["Row"]["status"] };
+        Row: { id: string; budget_id: string; requester_id: string; amount: number; category: "groceries" | "transport" | "dining" | "utilities" | "health" | "other"; merchant: string | null; description: string | null; receipt_url: string | null; due_date: string | null; status: "pending" | "approved" | "rejected" | "reconciled"; reviewed_by: string | null; reviewed_at: string | null; rejection_reason: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; budget_id: string; requester_id: string; amount: number; category: Database["public"]["Tables"]["reimbursement_requests"]["Row"]["category"]; merchant?: string | null; description?: string | null; receipt_url?: string | null; due_date?: string | null; status?: Database["public"]["Tables"]["reimbursement_requests"]["Row"]["status"] };
         Update: Partial<Database["public"]["Tables"]["reimbursement_requests"]["Insert"]> & { reviewed_by?: string | null; reviewed_at?: string | null; rejection_reason?: string | null };
       };
       reconciliations: {

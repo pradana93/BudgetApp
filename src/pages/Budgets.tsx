@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -52,17 +53,38 @@ export default function Budgets(){
     return Math.min(100, Math.max(0, (Number(b.allocated_amount) / total) * 100));
   };
 
+  const [bq, setBq] = React.useState("");
+  const filteredBudgets = React.useMemo(() => {
+    const needle = bq.trim().toLowerCase();
+    return (data ?? []).filter((b) => !needle || b.name.toLowerCase().includes(needle));
+  }, [data, bq]);
+
+  const exportCsv = () => {
+    if (!data) return;
+    const rows = [["name", "total", "allocated", "available", "currency", "status"],
+      ...data.map((b) => [b.name, String(b.total_amount), String(b.allocated_amount), String(b.available_amount ?? ""), b.currency, b.status])];
+    const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "budgets.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const onCreate = ()=>{ try{ setErr(null); schema.parse({...form}); mut.mutate(); } catch(e){ if(e instanceof z.ZodError) setErr(e.errors[0].message); else setErr((e as Error).message); } };
 
   return <div className="space-y-4">
-    <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">{t("budgets.title")}</h1>{isOwner && <Button onClick={()=>setOpen(true)}>{t("budgets.new")}</Button>}</div>
+    <div className="flex flex-wrap justify-between items-center gap-2"><h1 className="text-2xl font-bold">{t("budgets.title")}</h1><div className="flex gap-2">
+      <Input placeholder={t("budgets.searchPh")} value={bq} onChange={(e)=>setBq(e.target.value)} className="max-w-[200px]" />
+      <Button variant="outline" onClick={exportCsv}>{t("budgets.export")}</Button>
+      {isOwner && <Button onClick={()=>setOpen(true)}>{t("budgets.new")}</Button>}
+    </div></div>
     <Card><CardHeader><CardTitle>{t("budgets.all")}</CardTitle></CardHeader><CardContent>
       {isLoading ? <div className="text-sm text-muted-foreground">{t("common.loading")}</div> :
       <Table><TableHeader><TableRow><TableHead>{t("budgets.name")}</TableHead><TableHead>{t("budgets.total")}</TableHead><TableHead>{t("budgets.allocated")}</TableHead><TableHead>{t("budgets.available")}</TableHead><TableHead>{t("budgets.usage")}</TableHead><TableHead>{t("budgets.status")}</TableHead>{isOwner && <TableHead>{t("budgets.action")}</TableHead>}</TableRow></TableHeader>
-      <TableBody>{data?.map(b=> <TableRow key={b.id}><TableCell><Link to={`/budgets/${b.id}`} className="text-primary underline">{b.name}</Link></TableCell><TableCell>{formatMoney(Number(b.total_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.allocated_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.available_amount), b.currency)}</TableCell><TableCell><div className="h-2 w-28 rounded bg-muted overflow-hidden" title={t("budgets.usedPct", { pct: usagePct(b).toFixed(1) })}><div className="h-2 rounded bg-primary" style={{ width: `${usagePct(b)}%` }} /></div></TableCell><TableCell><Badge variant={b.status==="active"?"approved":"secondary"}>{b.status}</Badge></TableCell>{isOwner && <TableCell>{b.status === "active"
+      <TableBody>{filteredBudgets?.map(b=> <TableRow key={b.id}><TableCell><Link to={`/budgets/${b.id}`} className="text-primary underline">{b.name}</Link></TableCell><TableCell>{formatMoney(Number(b.total_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.allocated_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.available_amount), b.currency)}</TableCell><TableCell><div className="h-2 w-28 rounded bg-muted overflow-hidden" title={t("budgets.usedPct", { pct: usagePct(b).toFixed(1) })}><div className="h-2 rounded bg-primary" style={{ width: `${usagePct(b)}%` }} /></div></TableCell><TableCell><Badge variant={b.status==="active"?"approved":"secondary"}>{b.status}</Badge></TableCell>{isOwner && <TableCell>{b.status === "active"
         ? <Button size="sm" variant="outline" onClick={()=>statusMut.mutate({ id: b.id, status: "closed" })} disabled={statusMut.isPending}>{t("budgets.close")}</Button>
         : <Button size="sm" variant="outline" onClick={()=>statusMut.mutate({ id: b.id, status: "active" })} disabled={statusMut.isPending}>{t("budgets.reopen")}</Button>}</TableCell>}</TableRow>)}
-      {data?.length===0 && <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center text-muted-foreground">{t("budgets.noBudgets")}</TableCell></TableRow>}
+      {filteredBudgets?.length===0 && <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center text-muted-foreground">{bq.trim() ? t("req.noMatch") : t("budgets.noBudgets")}</TableCell></TableRow>}
       </TableBody></Table>}
     </CardContent></Card>
 
@@ -71,7 +93,8 @@ export default function Budgets(){
       <DialogContent>
         <div className="grid gap-3">
           <div><Label>{t("budgets.name")}</Label><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder={t("budgets.phName")} /></div>
-          <div><Label>{t("budgets.fTotal")}</Label><Input value={form.total_amount} onChange={e=>setForm({...form,total_amount:e.target.value})} placeholder={t("budgets.phTotal")} /></div>
+          <div><Label>{t("budgets.fTotalAmt")} ({form.currency})</Label><Input value={form.total_amount} onChange={e=>setForm({...form,total_amount:e.target.value})} placeholder={t("budgets.phTotal")} /></div>
+          <div><Label>{t("budgets.currency")}</Label><Select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}><option value="IDR">IDR</option><option value="USD">USD</option></Select></div>
           <div className="grid grid-cols-2 gap-3"><div><Label>{t("budgets.fStart")}</Label><Input type="date" value={form.period_start} onChange={e=>setForm({...form,period_start:e.target.value})} /></div><div><Label>{t("budgets.fEnd")}</Label><Input type="date" value={form.period_end} onChange={e=>setForm({...form,period_end:e.target.value})} /></div></div>
           {err && <div className="text-sm text-destructive">{err}</div>}
         </div>
