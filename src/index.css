@@ -132,3 +132,11 @@ html {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+@media (max-width: 639px) {
+  /* Bottom-sheet dialogs on phones */
+  .mobile-sheet {
+    align-self: flex-end;
+    margin: 0;
+  }
+}

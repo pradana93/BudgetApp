@@ -110,7 +110,7 @@ export default function RequestDetail(){
     </CardContent></Card>}
 
     {isOwner && data.status==="pending" && <Card><CardHeader><CardTitle>{t("rd.review")}</CardTitle></CardHeader><CardContent className="space-y-3">
-      <div className="flex gap-2"><Button onClick={()=>approve.mutate()} disabled={approve.isPending}>{approve.isPending?t("rd.approving"):t("rd.approve")}</Button><div className="flex-1 flex gap-2"><Textarea placeholder={t("rd.rejectPh")} value={rejection} onChange={e=>setRejection(e.target.value)} /><Button variant="destructive" onClick={()=>reject.mutate()} disabled={reject.isPending || rejection.trim().length<3}>{t("rd.reject")}</Button></div></div>
+      <div className="flex flex-col sm:flex-row gap-2"><Button onClick={()=>approve.mutate()} disabled={approve.isPending}>{approve.isPending?t("rd.approving"):t("rd.approve")}</Button><div className="flex-1 flex flex-col sm:flex-row gap-2"><Textarea placeholder={t("rd.rejectPh")} value={rejection} onChange={e=>setRejection(e.target.value)} /><Button variant="destructive" onClick={()=>reject.mutate()} disabled={reject.isPending || rejection.trim().length<3}>{t("rd.reject")}</Button></div></div>
     </CardContent></Card>}
 
     {isOwner && data.status==="approved" && <Card><CardHeader><CardTitle>{t("rd.reconcileTitle")}</CardTitle></CardHeader><CardContent className="space-y-3">

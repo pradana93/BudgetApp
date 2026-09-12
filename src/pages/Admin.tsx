@@ -112,7 +112,7 @@ export default function Admin() {
         <Button variant="secondary" onClick={exportCsv}>{t("admin.export")}</Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
         <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.totalBudgets")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{formatMoney(totalBudget)}</div></CardContent></Card>
         <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.allocated")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{formatMoney(totalAllocated)}</div></CardContent></Card>
         <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.pending")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{pending.length}</div></CardContent></Card>

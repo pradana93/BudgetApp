@@ -5,9 +5,10 @@ import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut } from "lucide-react";
+import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle, useLang } from "@/i18n/LanguageContext";
+import type { StringKey } from "@/i18n/translations";
 
 const nav = [
   { to: "/", key: "nav.dashboard" as const, icon: LayoutDashboard },
@@ -17,6 +18,8 @@ const nav = [
 ];
 
 const adminNav = { to: "/admin", key: "nav.admin" as const, icon: ShieldCheck };
+
+type Tab = { to: string; key: StringKey; icon: LucideIcon; badge?: number };
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useSession();
@@ -45,6 +48,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc, profile]);
+
+  const tabs: Tab[] = [
+    { to: "/", key: "nav.dashboard", icon: LayoutDashboard },
+    { to: "/budgets", key: "nav.budgets", icon: Wallet },
+    { to: "/requests", key: "nav.requests", icon: Receipt },
+    ...(profile?.role === "owner"
+      ? [{ to: "/admin", key: "nav.admin", icon: ShieldCheck } as Tab]
+      : [{ to: "/settings", key: "nav.settings", icon: Settings } as Tab]),
+    { to: "/notifications", key: "nav.notifications", icon: Bell, badge: unread ?? 0 },
+  ];
+
   return (
     <div className="min-h-screen flex bg-muted/30">
       <aside className="w-64 shrink-0 border-r bg-card hidden md:flex flex-col sticky top-0 h-screen">
@@ -81,24 +95,36 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="md:hidden border-b bg-card p-3 flex items-center justify-between">
+        <header className="md:hidden sticky top-0 z-30 border-b bg-card/95 backdrop-blur p-3 flex items-center justify-between">
           <span className="font-bold">BudgetApp</span>
-          <span className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" aria-label={t("nav.notifications")} onClick={() => navgt("/notifications")} className="relative">
-              <Bell className="h-4 w-4" />
-              {(unread ?? 0) > 0 && <span className="absolute -top-1 -right-1 rounded-full bg-destructive text-destructive-foreground text-[10px] px-1 leading-4">{unread}</span>}
-            </Button>
-            <span className="text-xs capitalize">{profile?.role}</span>
+          <span className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" aria-label={t("nav.settings")} onClick={() => navgt("/settings")}><Settings className="h-4 w-4" /></Button>
             <LanguageToggle />
             <ThemeToggle />
           </span>
         </header>
-        <nav className="md:hidden flex gap-1 p-2 border-b bg-card overflow-x-auto">
-          {items.map((n) => (
-            <Link key={n.to} to={n.to} className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap ${loc.pathname === n.to ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{t(n.key)}</Link>
-          ))}
+        <main className="flex-1 p-4 md:p-6 pb-28 md:pb-6 max-w-6xl w-full mx-auto"><div key={loc.pathname} className="animate-fade-up">{children}</div></main>
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t bg-card/95 backdrop-blur" aria-label="Primary">
+          <div className="grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
+            {tabs.map((tb) => {
+              const active = tb.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(tb.to);
+              return (
+                <button
+                  key={tb.to}
+                  onClick={() => navgt(tb.to)}
+                  className={`relative flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
+                >
+                  {active && <span className="absolute top-0 h-0.5 w-10 rounded-full bg-primary" />}
+                  <span className="relative">
+                    <tb.icon className="h-5 w-5" />
+                    {!!tb.badge && tb.badge > 0 && <span className="absolute -top-1.5 -right-2.5 rounded-full bg-destructive text-destructive-foreground text-[10px] px-1 leading-4">{tb.badge}</span>}
+                  </span>
+                  {t(tb.key)}
+                </button>
+              );
+            })}
+          </div>
         </nav>
-        <main className="flex-1 p-4 md:p-6 max-w-6xl w-full mx-auto"><div key={loc.pathname} className="animate-fade-up">{children}</div></main>
       </div>
     </div>
   );

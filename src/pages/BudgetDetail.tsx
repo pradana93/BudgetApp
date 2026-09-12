@@ -40,14 +40,14 @@ export default function BudgetDetail(){
 
   if(!budget) return <div className="p-4 text-sm text-muted-foreground">{t("common.loading")}</div>;
   return <div className="space-y-6">
-    <div className="flex justify-between"><div><h1 className="text-2xl font-bold">{budget.name}</h1><p className="text-sm text-muted-foreground">{formatMoney(Number(budget.total_amount),budget.currency)} total • {formatMoney(Number(budget.allocated_amount),budget.currency)} allocated • {formatMoney(Number(budget.available_amount),budget.currency)} available</p></div><Button variant="outline" onClick={exportCsv}>{t("bd.export")}</Button></div>
+    <div className="flex flex-wrap justify-between gap-2"><div><h1 className="text-2xl font-bold">{budget.name}</h1><p className="text-sm text-muted-foreground">{formatMoney(Number(budget.total_amount),budget.currency)} total • {formatMoney(Number(budget.allocated_amount),budget.currency)} allocated • {formatMoney(Number(budget.available_amount),budget.currency)} available</p></div><Button variant="outline" onClick={exportCsv}>{t("bd.export")}</Button></div>
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2">{t("bd.aiTitle")} <Badge variant="secondary">{t("bd.movements", { n: insights.movementCount })}</Badge></CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <ul className="space-y-1 text-sm">
           {insights.narrative.map((line, i) => <li key={i} className="flex gap-2"><span className="text-primary">•</span><span>{line}</span></li>)}
         </ul>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 text-sm">
           <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">{t("bd.burnRate")}</div><div className="font-bold">{formatMoney(Number(insights.burnRate30d), budget.currency)}/day</div></div>
           <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">{t("bd.runway")}</div><div className="font-bold">{insights.runwayDays === null ? "—" : t("bd.days", { n: insights.runwayDays })}</div></div>
           <div className="rounded-md border p-3"><div className="text-muted-foreground text-xs">{t("bd.pendingExp")}</div><div className="font-bold">{formatMoney(Number(insights.pendingExposure), budget.currency)} ({insights.pendingCount})</div></div>
