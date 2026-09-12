@@ -3,6 +3,7 @@ import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -37,14 +38,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="p-4 border-t">
-          <div className="text-sm font-medium truncate">{profile?.email ?? profile?.display_name ?? "User"}</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm font-medium truncate">{profile?.email ?? profile?.display_name ?? "User"}</div>
+            <ThemeToggle />
+          </div>
           <Button variant="ghost" size="sm" className="mt-2 w-full justify-start" onClick={async () => { await signOut(); navgt("/login"); }}><LogOut className="h-4 w-4 mr-2" /> Sign out</Button>
         </div>
       </aside>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="md:hidden border-b bg-card p-3 flex items-center justify-between">
           <span className="font-bold">BudgetApp</span>
-          <span className="text-xs capitalize">{profile?.role}</span>
+          <span className="flex items-center gap-2">
+            <span className="text-xs capitalize">{profile?.role}</span>
+            <ThemeToggle />
+          </span>
         </header>
         <nav className="md:hidden flex gap-1 p-2 border-b bg-card overflow-x-auto">
           {items.map((n) => (

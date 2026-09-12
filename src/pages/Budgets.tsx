@@ -34,15 +34,28 @@ export default function Budgets(){
     if(error) throw error;
   }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["budgets"]}); setOpen(false); setForm({ name:"", total_amount:"", currency:"IDR", period_start:"", period_end:"" }); toast({title:"Budget created"}); }, onError:(e:Error)=> toast({title:"Failed", description:e.message, variant:"destructive"}) });
 
+  const statusMut = useMutation({ mutationFn: async({ id, status }: { id: string; status: "active" | "closed" })=>{
+    const { error } = await supabase.from("budgets").update({ status }).eq("id", id);
+    if(error) throw error;
+  }, onSuccess:(_, v)=>{ qc.invalidateQueries({queryKey:["budgets"]}); toast({title: v.status === "closed" ? "Budget closed" : "Budget reopened"}); }, onError:(e:Error)=> toast({title:"Failed", description:e.message, variant:"destructive"}) });
+
+  const usagePct = (b: { total_amount: number | string; allocated_amount: number | string }) => {
+    const total = Number(b.total_amount);
+    if (!(total > 0)) return 0;
+    return Math.min(100, Math.max(0, (Number(b.allocated_amount) / total) * 100));
+  };
+
   const onCreate = ()=>{ try{ setErr(null); budgetSchema.parse({...form}); mut.mutate(); } catch(e){ if(e instanceof z.ZodError) setErr(e.errors[0].message); else setErr((e as Error).message); } };
 
   return <div className="space-y-4">
     <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Budgets</h1>{isOwner && <Button onClick={()=>setOpen(true)}>New budget</Button>}</div>
     <Card><CardHeader><CardTitle>All budgets</CardTitle></CardHeader><CardContent>
       {isLoading ? <div className="text-sm text-muted-foreground">Loading…</div> :
-      <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Total</TableHead><TableHead>Allocated</TableHead><TableHead>Available</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-      <TableBody>{data?.map(b=> <TableRow key={b.id}><TableCell><Link to={`/budgets/${b.id}`} className="text-primary underline">{b.name}</Link></TableCell><TableCell>{formatMoney(Number(b.total_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.allocated_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.available_amount), b.currency)}</TableCell><TableCell><Badge variant={b.status==="active"?"approved":"secondary"}>{b.status}</Badge></TableCell></TableRow>)}
-      {data?.length===0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No budgets yet</TableCell></TableRow>}
+      <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Total</TableHead><TableHead>Allocated</TableHead><TableHead>Available</TableHead><TableHead>Usage</TableHead><TableHead>Status</TableHead>{isOwner && <TableHead>Action</TableHead>}</TableRow></TableHeader>
+      <TableBody>{data?.map(b=> <TableRow key={b.id}><TableCell><Link to={`/budgets/${b.id}`} className="text-primary underline">{b.name}</Link></TableCell><TableCell>{formatMoney(Number(b.total_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.allocated_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.available_amount), b.currency)}</TableCell><TableCell><div className="h-2 w-28 rounded bg-muted overflow-hidden" title={`${usagePct(b).toFixed(1)}% used`}><div className="h-2 rounded bg-primary" style={{ width: `${usagePct(b)}%` }} /></div></TableCell><TableCell><Badge variant={b.status==="active"?"approved":"secondary"}>{b.status}</Badge></TableCell>{isOwner && <TableCell>{b.status === "active"
+        ? <Button size="sm" variant="outline" onClick={()=>statusMut.mutate({ id: b.id, status: "closed" })} disabled={statusMut.isPending}>Close</Button>
+        : <Button size="sm" variant="outline" onClick={()=>statusMut.mutate({ id: b.id, status: "active" })} disabled={statusMut.isPending}>Reopen</Button>}</TableCell>}</TableRow>)}
+      {data?.length===0 && <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center text-muted-foreground">No budgets yet</TableCell></TableRow>}
       </TableBody></Table>}
     </CardContent></Card>
 
