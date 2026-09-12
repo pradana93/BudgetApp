@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import * as React from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
@@ -15,7 +16,14 @@ export default function Dashboard(){
     const { data, error } = await supabase.from("reimbursement_requests").select("*").order("created_at",{ascending:false}).limit(50); if(error) throw error; return data;
   }});
   const pending = requests?.filter(r=>r.status==="pending").length ?? 0;
-  const totalSpend = budgets?.reduce((s,b)=> s + Number(b.allocated_amount),0) ?? 0;
+  const spendByCurrency = React.useMemo(() => {
+    const map = new Map<string, number>();
+    for (const b of budgets ?? []) {
+      const c = b.currency ?? "IDR";
+      map.set(c, (map.get(c) ?? 0) + Number(b.allocated_amount));
+    }
+    return [...map.entries()];
+  }, [budgets]);
   const chartData = budgets?.map(b=> ({ name: b.name.slice(0,12), spend: Number(b.allocated_amount), total: Number(b.total_amount) })) ?? [];
   const statusColors: Record<string, string> = { pending: "#f59e0b", approved: "#10b981", rejected: "#ef4444", reconciled: "#3b82f6" };
   const statusData = ["pending", "approved", "rejected", "reconciled"]
@@ -26,7 +34,7 @@ export default function Dashboard(){
     <div className="flex items-center justify-between"><h1 className="text-2xl font-bold">Dashboard</h1><Badge variant="pending">{pending} pending</Badge></div>
     <div className="grid gap-4 md:grid-cols-3">
       <Card><CardHeader><CardTitle className="text-sm font-medium">Budgets</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{budgets?.length ?? 0}</div></CardContent></Card>
-      <Card><CardHeader><CardTitle className="text-sm font-medium">Total allocated</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{formatMoney(totalSpend)}</div></CardContent></Card>
+      <Card><CardHeader><CardTitle className="text-sm font-medium">Total allocated</CardTitle></CardHeader><CardContent><div className="space-y-1">{spendByCurrency.length===0 ? <div className="text-2xl font-bold">{formatMoney(0)}</div> : spendByCurrency.map(([c, v]) => <div key={c} className="text-2xl font-bold">{formatMoney(v, c)}</div>)}</div></CardContent></Card>
       <Card><CardHeader><CardTitle className="text-sm font-medium">Pending requests</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{pending}</div></CardContent></Card>
     </div>
     <div className="grid gap-4 md:grid-cols-2">

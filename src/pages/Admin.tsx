@@ -31,10 +31,11 @@ export default function Admin() {
   const { toast } = useToast();
   const [reasons, setReasons] = React.useState<Record<string, string>>({});
   const [topups, setTopups] = React.useState<Record<string, string>>({});
+  const [limit, setLimit] = React.useState(100);
 
   const { data: budgets } = useQuery({ queryKey: ["budgets"], queryFn: () => fetchAll<Budget>("budgets") });
   const { data: requests } = useQuery({ queryKey: ["requests"], queryFn: () => fetchAll<Req>("reimbursement_requests") });
-  const { data: ledger } = useQuery({ queryKey: ["admin-ledger"], queryFn: () => fetchAll<Ledger>("ledger_entries", "created_at", false, 100) });
+  const { data: ledger } = useQuery({ queryKey: ["admin-ledger", limit], queryFn: () => fetchAll<Ledger>("ledger_entries", "created_at", false, limit) });
   const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => fetchAll<Profile>("profiles") });
 
   const invalidate = () => {
@@ -169,13 +170,14 @@ export default function Admin() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Recent ledger (append-only, latest 100)</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Recent ledger (append-only, latest {limit})</CardTitle></CardHeader>
         <CardContent>
           <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Budget</TableHead><TableHead>Type</TableHead><TableHead>Debit</TableHead><TableHead>Credit</TableHead></TableRow></TableHeader>
           <TableBody>{ledger?.map((l) => (
             <TableRow key={l.id}><TableCell>{new Date(l.created_at).toLocaleString()}</TableCell><TableCell>{budgetName(l.budget_id)}</TableCell><TableCell>{l.reference_type}</TableCell>
             <TableCell>{l.debit > 0 ? formatMoney(Number(l.debit)) : "-"}</TableCell><TableCell>{l.credit > 0 ? formatMoney(Number(l.credit)) : "-"}</TableCell></TableRow>))}
           </TableBody></Table>
+          {(ledger?.length ?? 0) >= limit && <Button variant="outline" className="mt-3" onClick={()=>setLimit((l)=>l + 100)}>Load more</Button>}
         </CardContent>
       </Card>
     </div>

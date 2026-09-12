@@ -1,8 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import * as React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, LogOut } from "lucide-react";
+import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const nav = [
@@ -17,6 +20,27 @@ const adminNav = { to: "/admin", label: "Admin", icon: ShieldCheck };
 export function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useSession();
   const items = profile?.role === "owner" ? [...nav.slice(0, 3), adminNav, nav[3]] : nav;
+  const qc = useQueryClient();
+  const { data: unread } = useQuery({
+    queryKey: ["notifications-unread"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return 0;
+      const { count, error } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_read", false);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!profile,
+  });
+  React.useEffect(() => {
+    if (!profile) return;
+    const ch = supabase.channel("notif-bell")
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => {
+        qc.invalidateQueries({ queryKey: ["notifications-unread"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc, profile]);
   const loc = useLocation();
   const navgt = useNavigate();
   return (
@@ -40,7 +64,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="p-4 border-t">
           <div className="flex items-center justify-between gap-2">
             <div className="text-sm font-medium truncate">{profile?.email ?? profile?.display_name ?? "User"}</div>
-            <ThemeToggle />
+            <span className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" aria-label="Notifications" onClick={() => navgt("/notifications")} className="relative">
+                <Bell className="h-4 w-4" />
+                {(unread ?? 0) > 0 && <span className="absolute -top-1 -right-1 rounded-full bg-destructive text-destructive-foreground text-[10px] px-1 leading-4">{unread}</span>}
+              </Button>
+              <ThemeToggle />
+            </span>
           </div>
           <Button variant="ghost" size="sm" className="mt-2 w-full justify-start" onClick={async () => { await signOut(); navgt("/login"); }}><LogOut className="h-4 w-4 mr-2" /> Sign out</Button>
         </div>
@@ -49,6 +79,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <header className="md:hidden border-b bg-card p-3 flex items-center justify-between">
           <span className="font-bold">BudgetApp</span>
           <span className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" aria-label="Notifications" onClick={() => navgt("/notifications")} className="relative">
+              <Bell className="h-4 w-4" />
+              {(unread ?? 0) > 0 && <span className="absolute -top-1 -right-1 rounded-full bg-destructive text-destructive-foreground text-[10px] px-1 leading-4">{unread}</span>}
+            </Button>
             <span className="text-xs capitalize">{profile?.role}</span>
             <ThemeToggle />
           </span>

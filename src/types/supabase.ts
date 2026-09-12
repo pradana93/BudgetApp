@@ -28,6 +28,11 @@ export type Database = {
         Insert: { id?: string; budget_id: string; debit?: number; credit?: number; reference_id?: string | null; reference_type: Database["public"]["Tables"]["ledger_entries"]["Row"]["reference_type"]; description?: string | null };
         Update: never;
       };
+      notifications: {
+        Row: { id: string; user_id: string; type: "new_request" | "request_approved" | "request_rejected" | "request_reconciled"; title: string; body: string | null; link: string | null; is_read: boolean; created_at: string };
+        Insert: { id?: string; user_id: string; type: Database["public"]["Tables"]["notifications"]["Row"]["type"]; title: string; body?: string | null; link?: string | null; is_read?: boolean };
+        Update: { is_read?: boolean };
+      };
     };
     Views: { [_ in never]: never };
     Functions: {

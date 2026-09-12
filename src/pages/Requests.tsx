@@ -19,6 +19,7 @@ export default function Requests(){
   const [q, setQ] = React.useState("");
   const [status, setStatus] = React.useState<(typeof STATUSES)[number]>("all");
   const [category, setCategory] = React.useState<(typeof CATEGORIES)[number]>("all");
+  const [visible, setVisible] = React.useState(20);
 
   const { data, isLoading } = useQuery({ queryKey:["requests"], queryFn: async()=>{
     const { data, error } = await supabase.from("reimbursement_requests").select("*").order("created_at",{ascending:false}); if(error) throw error; return data;
@@ -46,14 +47,15 @@ export default function Requests(){
           {CATEGORIES.map((c)=><option key={c} value={c}>{c === "all" ? "All categories" : c}</option>)}
         </Select>
         {(q || status !== "all" || category !== "all") && (
-          <Button variant="outline" onClick={()=>{ setQ(""); setStatus("all"); setCategory("all"); }}>Clear</Button>
+          <Button variant="outline" onClick={()=>{ setQ(""); setStatus("all"); setCategory("all"); setVisible(20); }}>Clear</Button>
         )}
       </div>
       {isLoading ? <div className="text-sm text-muted-foreground">Loading…</div> :
       <Table><TableHeader><TableRow><TableHead>Merchant</TableHead><TableHead>Category</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-      <TableBody>{filtered?.map(r=> <TableRow key={r.id}><TableCell><Link to={`/requests/${r.id}`} className="text-primary underline">{r.merchant ?? "—"}</Link></TableCell><TableCell>{r.category}</TableCell><TableCell>{formatMoney(Number(r.amount))}</TableCell><TableCell><Badge variant={r.status as never}>{r.status}</Badge></TableCell><TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell></TableRow>)}
+      <TableBody>{filtered?.slice(0, visible).map(r=> <TableRow key={r.id}><TableCell><Link to={`/requests/${r.id}`} className="text-primary underline">{r.merchant ?? "—"}</Link></TableCell><TableCell>{r.category}</TableCell><TableCell>{formatMoney(Number(r.amount))}</TableCell><TableCell><Badge variant={r.status as never}>{r.status}</Badge></TableCell><TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell></TableRow>)}
       {filtered?.length===0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">{(data?.length ?? 0) === 0 ? "No requests — submit one" : "No requests match these filters"}</TableCell></TableRow>}
       </TableBody></Table>}
+      {(filtered?.length ?? 0) > visible && <Button variant="outline" className="mt-3" onClick={()=>setVisible((v)=>v + 20)}>Show more ({(filtered?.length ?? 0) - visible} remaining)</Button>}
     </CardContent></Card>
   </div>;
 }
