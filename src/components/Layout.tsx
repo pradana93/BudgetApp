@@ -104,7 +104,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </span>
         </header>
         <main className="flex-1 p-4 md:p-6 pb-28 md:pb-6 max-w-6xl w-full mx-auto"><div key={loc.pathname} className="animate-fade-up">{children}</div></main>
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t bg-card/95 backdrop-blur" aria-label="Primary">
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t bg-card/95 backdrop-blur transform-gpu" aria-label="Primary">
           <div className="grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
             {tabs.map((tb) => {
               const active = tb.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(tb.to);
@@ -112,14 +112,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <button
                   key={tb.to}
                   onClick={() => navgt(tb.to)}
-                  className={`relative flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
+                  className={`relative flex min-w-0 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
                 >
                   {active && <span className="absolute top-0 h-0.5 w-10 rounded-full bg-primary" />}
                   <span className="relative">
                     <tb.icon className="h-5 w-5" />
                     {!!tb.badge && tb.badge > 0 && <span className="absolute -top-1.5 -right-2.5 rounded-full bg-destructive text-destructive-foreground text-[10px] px-1 leading-4">{tb.badge}</span>}
                   </span>
-                  {t(tb.key)}
+                  <span className="truncate max-w-full px-0.5">{t(tb.key)}</span>
                 </button>
               );
             })}

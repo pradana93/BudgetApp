@@ -68,7 +68,7 @@ export default function Notifications() {
 
   return (
     <div className="space-y-4 max-w-2xl">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-2">
         <h1 className="text-2xl font-bold">{t("notif.title")} {unread > 0 && <Badge variant="pending" className="ml-2">{t("notif.unread", { n: unread })}</Badge>}</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => markAll.mutate()} disabled={markAll.isPending || unread === 0}>{t("notif.markAll")}</Button>

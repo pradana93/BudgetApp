@@ -10,7 +10,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
   return <ToastContext.Provider value={{ toasts, toast }}>
     {children}
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div className="fixed bottom-24 md:bottom-4 right-4 left-4 md:left-auto z-50 flex flex-col gap-2">
       {toasts.map(t=> <div key={t.id} className={`animate-pop rounded-md border px-4 py-3 shadow-lg bg-card text-card-foreground min-w-[300px] ${t.variant==="destructive"?"border-destructive bg-destructive text-destructive-foreground":""}`}><div className="font-medium text-sm">{t.title}</div>{t.description && <div className="text-sm opacity-90">{t.description}</div>}</div>)}
     </div>
   </ToastContext.Provider>;

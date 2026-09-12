@@ -54,13 +54,13 @@ export default function Settings(){
       <div>{t("set.currency")}</div>
     </CardContent></Card>
     <Card><CardHeader><CardTitle>{t("set.nameTitle")}</CardTitle><CardDescription>{t("set.nameDesc")}</CardDescription></CardHeader><CardContent>
-      <form onSubmit={saveName} className="flex gap-2">
+      <form onSubmit={saveName} className="flex flex-col sm:flex-row gap-2">
         <Input value={displayName} onChange={(e)=>setDisplayName(e.target.value)} placeholder={t("set.namePh")} maxLength={100} />
         <Button type="submit" disabled={savingName}>{savingName ? t("set.saving") : t("set.save")}</Button>
       </form>
     </CardContent></Card>
     <Card><CardHeader><CardTitle>{t("set.pwTitle")}</CardTitle><CardDescription>{t("set.pwDesc")}</CardDescription></CardHeader><CardContent>
-      <form onSubmit={savePassword} className="flex gap-2">
+      <form onSubmit={savePassword} className="flex flex-col sm:flex-row gap-2">
         <Input type="password" autoComplete="new-password" value={newPassword} onChange={(e)=>setNewPassword(e.target.value)} placeholder={t("set.pwPh")} />
         <Button type="submit" disabled={savingPw}>{savingPw ? t("set.updating") : t("set.update")}</Button>
       </form>

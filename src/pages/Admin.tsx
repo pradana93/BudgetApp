@@ -113,10 +113,10 @@ export default function Admin() {
       </div>
 
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.totalBudgets")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{formatMoney(totalBudget)}</div></CardContent></Card>
-        <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.allocated")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{formatMoney(totalAllocated)}</div></CardContent></Card>
-        <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.pending")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{pending.length}</div></CardContent></Card>
-        <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.recUsers")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{reconciledCount} / {users?.length ?? 0}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.totalBudgets")}</CardTitle></CardHeader><CardContent><div className="stat-value">{formatMoney(totalBudget)}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.allocated")}</CardTitle></CardHeader><CardContent><div className="stat-value">{formatMoney(totalAllocated)}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.pending")}</CardTitle></CardHeader><CardContent><div className="stat-value">{pending.length}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-sm font-medium">{t("admin.recUsers")}</CardTitle></CardHeader><CardContent><div className="stat-value">{reconciledCount} / {users?.length ?? 0}</div></CardContent></Card>
       </div>
 
       <Card>

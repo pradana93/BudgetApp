@@ -133,6 +133,22 @@ html {
   font-variant-numeric: tabular-nums;
 }
 
+/* Stat numbers: shrink on phones, wrap long currency strings instead of overflowing the card */
+.stat-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .stat-value {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+}
+
 @media (max-width: 639px) {
   /* Bottom-sheet dialogs on phones */
   .mobile-sheet {
