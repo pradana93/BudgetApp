@@ -142,7 +142,7 @@ export default function Admin() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card><CardHeader><CardTitle>{t("admin.spendCat")}</CardTitle></CardHeader><CardContent className="h-[260px]">
           {byCategory.length === 0 ? <div className="text-sm text-muted-foreground">{t("admin.noSpend")}</div> :
-          <ResponsiveContainer width="100%" height="100%"><BarChart data={byCategory}><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="total" fill="#3b82f6" /></BarChart></ResponsiveContainer>}
+          <ResponsiveContainer width="100%" height="100%"><BarChart data={byCategory}><defs><linearGradient id="adminCatGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient></defs><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="total" fill="url(#adminCatGrad)" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer>}
         </CardContent></Card>
         <Card><CardHeader><CardTitle>{t("admin.users")}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{t("admin.email")}</TableHead><TableHead>{t("admin.name")}</TableHead><TableHead>{t("admin.role")}</TableHead></TableRow></TableHeader>

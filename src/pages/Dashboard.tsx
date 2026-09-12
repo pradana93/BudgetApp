@@ -8,16 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
+import { Wallet, TrendingUp, Clock } from "lucide-react";
 
 export default function Dashboard(){
   useRealtime();
   const { t, lang } = useLang();
-  const { data: budgets } = useQuery({ queryKey:["budgets"], queryFn: async()=>{
+  const { data: budgets, isLoading: loadingBudgets } = useQuery({ queryKey:["budgets"], queryFn: async()=>{
     const { data, error } = await supabase.from("budgets").select("*").order("created_at",{ascending:false}); if(error) throw error; return data;
   }});
-  const { data: requests } = useQuery({ queryKey:["requests"], queryFn: async()=>{
+  const { data: requests, isLoading: loadingRequests } = useQuery({ queryKey:["requests"], queryFn: async()=>{
     const { data, error } = await supabase.from("reimbursement_requests").select("*").order("created_at",{ascending:false}).limit(50); if(error) throw error; return data;
   }});
+  const loading = loadingBudgets || loadingRequests;
   const pending = requests?.filter(r=>r.status==="pending").length ?? 0;
   const spendByCurrency = React.useMemo(() => {
     const map = new Map<string, number>();
@@ -51,14 +53,16 @@ export default function Dashboard(){
   return <div className="space-y-6">
     <div className="flex items-center justify-between"><h1 className="text-2xl font-bold">{t("dash.title")}</h1><Badge variant="pending">{t("dash.pendingBadge", { count: pending })}</Badge></div>
     <div className="grid gap-4 md:grid-cols-3">
-      <Card><CardHeader><CardTitle className="text-sm font-medium">{t("dash.budgets")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{budgets?.length ?? 0}</div></CardContent></Card>
-      <Card><CardHeader><CardTitle className="text-sm font-medium">{t("dash.totalAllocated")}</CardTitle></CardHeader><CardContent><div className="space-y-1">{spendByCurrency.length===0 ? <div className="text-2xl font-bold">{formatMoney(0)}</div> : spendByCurrency.map(([c, v]) => <div key={c} className="text-2xl font-bold">{formatMoney(v, c)}</div>)}</div></CardContent></Card>
-      <Card><CardHeader><CardTitle className="text-sm font-medium">{t("dash.pendingRequests")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{pending}</div></CardContent></Card>
+      {loading ? [0, 1, 2].map((i) => <div key={i} className="skeleton h-[104px]" />) : <>
+      <Card className="card-lift"><CardHeader><CardTitle className="text-sm font-medium flex items-center gap-2"><span className="rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 p-1.5 text-white"><Wallet className="h-4 w-4" /></span>{t("dash.budgets")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tabular">{budgets?.length ?? 0}</div></CardContent></Card>
+      <Card className="card-lift"><CardHeader><CardTitle className="text-sm font-medium flex items-center gap-2"><span className="rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 p-1.5 text-white"><TrendingUp className="h-4 w-4" /></span>{t("dash.totalAllocated")}</CardTitle></CardHeader><CardContent><div className="space-y-1">{spendByCurrency.length===0 ? <div className="text-2xl font-bold tabular">{formatMoney(0)}</div> : spendByCurrency.map(([c, v]) => <div key={c} className="text-2xl font-bold tabular">{formatMoney(v, c)}</div>)}</div></CardContent></Card>
+      <Card className="card-lift"><CardHeader><CardTitle className="text-sm font-medium flex items-center gap-2"><span className="rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 p-1.5 text-white"><Clock className="h-4 w-4" /></span>{t("dash.pendingRequests")}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tabular">{pending}</div></CardContent></Card>
+      </>}
     </div>
     <div className="grid gap-4 md:grid-cols-2">
       <Card><CardHeader><CardTitle>{t("dash.spendByBudget")}</CardTitle></CardHeader><CardContent className="h-[260px]">
         {chartData.length===0 ? <div className="text-sm text-muted-foreground">{t("dash.noBudgets")}</div> :
-        <ResponsiveContainer width="100%" height="100%"><BarChart data={chartData}><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="spend" fill="#3b82f6" /></BarChart></ResponsiveContainer>}
+        <ResponsiveContainer width="100%" height="100%"><BarChart data={chartData}><defs><linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient></defs><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="spend" fill="url(#spendGrad)" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer>}
       </CardContent></Card>
       <Card><CardHeader><CardTitle>{t("dash.byStatus")}</CardTitle></CardHeader><CardContent className="h-[260px]">
         {statusData.length===0 ? <div className="text-sm text-muted-foreground">{t("dash.noRequestsYet")}</div> :
@@ -67,7 +71,7 @@ export default function Dashboard(){
     </div>
     <Card><CardHeader><CardTitle>{t("dash.trend")}</CardTitle></CardHeader><CardContent className="h-[220px]">
       {trend.every((x) => x.total === 0) ? <div className="text-sm text-muted-foreground">{t("dash.noRequestsYet")}</div> :
-      <ResponsiveContainer width="100%" height="100%"><BarChart data={trend}><XAxis dataKey="label" /><YAxis /><Tooltip /><Bar dataKey="total" fill="#10b981" /></BarChart></ResponsiveContainer>}
+      <ResponsiveContainer width="100%" height="100%"><BarChart data={trend}><defs><linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#34d399" /><stop offset="100%" stopColor="#059669" /></linearGradient></defs><XAxis dataKey="label" /><YAxis /><Tooltip /><Bar dataKey="total" fill="url(#trendGrad)" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer>}
     </CardContent></Card>
     <div className="grid gap-4 md:grid-cols-2">
       <Card><CardHeader><CardTitle>{t("dash.budgetsCard")}</CardTitle></CardHeader><CardContent className="space-y-2">        {budgets?.length===0 && <div className="text-sm text-muted-foreground">{t("dash.noBudgetsHint")}</div>}

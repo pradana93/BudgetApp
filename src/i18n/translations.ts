@@ -64,6 +64,10 @@ const en = {
   "register.roleC": "trigger).",
   "register.goLogin": "Go to login",
 
+  "auth.f1": "Real-time approvals and reconciliation",
+  "auth.f2": "Append-only ledger you can audit",
+  "auth.f3": "Private by design — owner and member roles",
+
   "dash.title": "Dashboard",
   "dash.pendingBadge": "{count} pending",
   "dash.budgets": "Budgets",
@@ -367,6 +371,10 @@ const id: Record<StringKey, string> = {
   "register.roleB": "menjadi owner, yang lain menjadi member (lihat",
   "register.roleC": "trigger).",
   "register.goLogin": "Ke halaman masuk",
+
+  "auth.f1": "Persetujuan dan rekonsiliasi real-time",
+  "auth.f2": "Ledger hanya-tambah yang bisa diaudit",
+  "auth.f3": "Privat sejak awal — peran owner dan member",
 
   "dash.title": "Dasbor",
   "dash.pendingBadge": "{count} menunggu",

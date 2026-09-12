@@ -62,7 +62,7 @@ export default function BudgetDetail(){
           {insights.anomalies.map((a, i) => <div key={i}>• {a}</div>)}
         </div>}
         {series.length > 0 && <div className="h-[220px]">
-          <ResponsiveContainer width="100%" height="100%"><AreaChart data={series}><XAxis dataKey="date" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} /><Tooltip /><Area type="monotone" dataKey="cumulative" name="Net spend" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.25} /></AreaChart></ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%"><AreaChart data={series}><defs><linearGradient id="bdAreaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.5} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} /></linearGradient></defs><XAxis dataKey="date" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} /><Tooltip /><Area type="monotone" dataKey="cumulative" name="Net spend" stroke="#3b82f6" fill="url(#bdAreaGrad)" /></AreaChart></ResponsiveContainer>
         </div>}
       </CardContent>
     </Card>

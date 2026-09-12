@@ -53,7 +53,7 @@ export default function Requests(){
           <Button variant="outline" onClick={()=>{ setQ(""); setStatus("all"); setCategory("all"); setVisible(20); }}>{t("req.clear")}</Button>
         )}
       </div>
-      {isLoading ? <div className="text-sm text-muted-foreground">{t("common.loading")}</div> :
+      {isLoading ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}</div> :
       <Table><TableHeader><TableRow><TableHead>{t("req.merchant")}</TableHead><TableHead>{t("req.category")}</TableHead><TableHead>{t("req.amount")}</TableHead><TableHead>{t("req.status")}</TableHead><TableHead>{t("req.date")}</TableHead><TableHead>{t("req.due")}</TableHead></TableRow></TableHeader>
       <TableBody>{filtered?.slice(0, visible).map(r=> <TableRow key={r.id}><TableCell><Link to={`/requests/${r.id}`} className="text-primary underline">{r.merchant ?? "—"}</Link></TableCell><TableCell>{r.category}</TableCell><TableCell>{formatMoney(Number(r.amount))}</TableCell><TableCell><Badge variant={r.status as never}>{r.status}</Badge></TableCell><TableCell>{formatDate(r.created_at, lang)}</TableCell><TableCell className={isOverdue(r.due_date, r.status) ? "text-destructive font-medium" : undefined}>{r.due_date ? formatDate(r.due_date, lang) : "—"}{isOverdue(r.due_date, r.status) ? ` (${t("req.overdue")})` : ""}</TableCell></TableRow>)}
       {filtered?.length===0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{(data?.length ?? 0) === 0 ? t("req.none") : t("req.noMatch")}</TableCell></TableRow>}

@@ -3,13 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/lib/supabase";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useSession } from "@/hooks/useSession";
 import { useLang } from "@/i18n/LanguageContext";
+import { AuthBrand } from "@/components/AuthBrand";
 import { getLoginSchema, type LoginForm } from "@/schemas/auth";
 
 export default function Login() {
@@ -48,14 +49,13 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/20 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{t("login.title")}</CardTitle>
-          <CardDescription>{t("login.desc")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500/10 via-background to-violet-500/10 p-4">
+      <Card className="w-full max-w-3xl overflow-hidden md:grid md:grid-cols-[1fr_1.15fr] animate-pop">
+        <AuthBrand />
+        <div className="p-6 md:p-8">
+          <CardTitle className="text-2xl">{t("login.title")}</CardTitle>
+          <CardDescription className="mt-1">{t("login.desc")}</CardDescription>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-6" noValidate>
             <div>
               <Label htmlFor="email">{t("login.email")}</Label>
               <Input id="email" type="email" autoComplete="email" placeholder="owner@budgetapp.local" {...register("email")} />
@@ -80,7 +80,7 @@ export default function Login() {
               {t("login.seedA")} <b>owner@budgetapp.local</b> / <b>member@budgetapp.local</b> {t("login.seedB")}
             </p>
           </form>
-        </CardContent>
+        </div>
       </Card>
     </div>
   );

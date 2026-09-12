@@ -98,7 +98,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Link key={n.to} to={n.to} className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap ${loc.pathname === n.to ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{t(n.key)}</Link>
           ))}
         </nav>
-        <main className="flex-1 p-4 md:p-6 max-w-6xl w-full mx-auto">{children}</main>
+        <main className="flex-1 p-4 md:p-6 max-w-6xl w-full mx-auto"><div key={loc.pathname} className="animate-fade-up">{children}</div></main>
       </div>
     </div>
   );
