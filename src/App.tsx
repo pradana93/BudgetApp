@@ -5,6 +5,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { Layout } from "@/components/Layout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
 import Budgets from "@/pages/Budgets";
 import BudgetDetail from "@/pages/BudgetDetail";
@@ -22,6 +23,7 @@ export default function App(){
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
             <Route path="/budgets" element={<ProtectedRoute><Layout><Budgets /></Layout></ProtectedRoute>} />
             <Route path="/budgets/:id" element={<ProtectedRoute><Layout><BudgetDetail /></Layout></ProtectedRoute>} />

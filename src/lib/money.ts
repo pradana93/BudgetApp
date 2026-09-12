@@ -12,7 +12,7 @@ export function formatMoney(value: string | number | Decimal, currency = "IDR"):
 }
 
 export function toMinorUnits(amount: string | number): number {
-  return new Decimal(amount).mul(100).toNumber();
+  return new Decimal(amount).mul(100).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
 }
 
 export function fromMinorUnits(minor: number): Decimal {
