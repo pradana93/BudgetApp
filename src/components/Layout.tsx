@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Wallet, Receipt, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, LogOut } from "lucide-react";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -11,8 +11,11 @@ const nav = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
+const adminNav = { to: "/admin", label: "Admin", icon: ShieldCheck };
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useSession();
+  const items = profile?.role === "owner" ? [...nav.slice(0, 3), adminNav, nav[3]] : nav;
   const loc = useLocation();
   const navgt = useNavigate();
   return (
@@ -24,7 +27,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {profile && <Badge variant={profile.role === "owner" ? "default" : "secondary"} className="mt-2 capitalize">{profile.role}</Badge>}
         </div>
         <nav className="flex-1 p-3 space-y-1">
-          {nav.map((n) => {
+          {items.map((n) => {
             const active = loc.pathname === n.to || (n.to !== "/" && loc.pathname.startsWith(n.to));
             return (
               <Link key={n.to} to={n.to} className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm ${active ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
@@ -44,7 +47,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <span className="text-xs capitalize">{profile?.role}</span>
         </header>
         <nav className="md:hidden flex gap-1 p-2 border-b bg-card overflow-x-auto">
-          {nav.map((n) => (
+          {items.map((n) => (
             <Link key={n.to} to={n.to} className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap ${loc.pathname === n.to ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{n.label}</Link>
           ))}
         </nav>

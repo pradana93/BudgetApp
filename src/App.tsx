@@ -13,6 +13,7 @@ import Requests from "@/pages/Requests";
 import NewRequest from "@/pages/NewRequest";
 import RequestDetail from "@/pages/RequestDetail";
 import Settings from "@/pages/Settings";
+import Admin from "@/pages/Admin";
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
@@ -31,6 +32,7 @@ export default function App(){
             <Route path="/requests/new" element={<ProtectedRoute><Layout><NewRequest /></Layout></ProtectedRoute>} />
             <Route path="/requests/:id" element={<ProtectedRoute><Layout><RequestDetail /></Layout></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute ownerOnly><Layout><Admin /></Layout></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
