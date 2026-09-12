@@ -47,7 +47,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [qc, profile]);
   return (
     <div className="min-h-screen flex bg-muted/30">
-      <aside className="w-64 border-r bg-card hidden md:flex flex-col">
+      <aside className="w-64 shrink-0 border-r bg-card hidden md:flex flex-col sticky top-0 h-screen">
         <div className="p-6 border-b">
           <div className="font-bold text-lg">BudgetApp</div>
           <div className="text-xs text-muted-foreground">{t("nav.tagline")}</div>
