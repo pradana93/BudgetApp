@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, Search, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, Search, Trophy, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CommandPalette } from "@/components/CommandPalette";
 import { LanguageToggle, useLang } from "@/i18n/LanguageContext";
@@ -19,13 +19,15 @@ const nav = [
 ];
 
 const adminNav = { to: "/admin", key: "nav.admin" as const, icon: ShieldCheck };
+const rewardsNav = { to: "/rewards", key: "nav.rewards" as const, icon: Trophy };
 
 type Tab = { to: string; key: StringKey; icon: LucideIcon; badge?: number };
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useSession();
   const { t } = useLang();
-  const items = profile?.role === "owner" ? [...nav.slice(0, 3), adminNav, nav[3]] : nav;
+  const baseItems = [...nav.slice(0, 3), rewardsNav, nav[3]];
+  const fullItems = profile?.role === "owner" ? [...baseItems.slice(0, 4), adminNav, baseItems[4]] : baseItems;
   const loc = useLocation();
   const navgt = useNavigate();
   const qc = useQueryClient();
@@ -84,7 +86,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Search className="h-4 w-4" /> {t("cmd.search")}
             <kbd className="ml-auto rounded border border-input px-1.5 text-[10px] font-sans">⌘K</kbd>
           </button>
-          {items.map((n) => {
+          {fullItems.map((n) => {
             const active = loc.pathname === n.to || (n.to !== "/" && loc.pathname.startsWith(n.to));
             return (
               <Link key={n.to} to={n.to} className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm ${active ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 import {
   LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell,
-  Plus, LogOut, Languages, type LucideIcon,
+  Plus, LogOut, Languages, Trophy, type LucideIcon,
 } from "lucide-react";
 import type { StringKey } from "@/i18n/translations";
 
@@ -73,6 +73,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       ? [{ id: "p-admin", group: "cmd.pages" as StringKey, label: t("nav.admin"), icon: ShieldCheck, run: () => go("/admin") }]
       : []),
     { id: "p-notif", group: "cmd.pages", label: t("nav.notifications"), icon: Bell, run: () => go("/notifications") },
+    { id: "p-rewards", group: "cmd.pages", label: t("nav.rewards"), icon: Trophy, run: () => go("/rewards") },
     { id: "p-settings", group: "cmd.pages", label: t("nav.settings"), icon: Settings, run: () => go("/settings") },
   ];
 

@@ -8,14 +8,19 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
 import { useSession } from "@/hooks/useSession";
+import { useToast } from "@/components/ui/toast";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { useCountUp } from "@/hooks/useCountUp";
+import { achievementsFor, achMeta, isUnlocked, levelOf, xpOf } from "@/lib/gamify";
 import { dateLocale, timeAgo } from "@/lib/datetime";
-import { Wallet, TrendingUp, Clock, ArrowDownLeft, ArrowUpRight, Receipt } from "lucide-react";
+import { Wallet, TrendingUp, Clock, ArrowDownLeft, ArrowUpRight, Receipt, Trophy } from "lucide-react";
 
 export default function Dashboard(){
   useRealtime();
   const { t, lang } = useLang();
   const { profile } = useSession();
+  const { toast } = useToast();
   const { data: budgets, isLoading: loadingBudgets } = useQuery({ queryKey:["budgets"], queryFn: async()=>{
     const { data, error } = await supabase.from("budgets").select("*").order("created_at",{ascending:false}); if(error) throw error; return data;
   }});
@@ -29,6 +34,29 @@ export default function Dashboard(){
   const pending = requests?.filter(r=>r.status==="pending").length ?? 0;
   const budgetsCount = Math.round(useCountUp(budgets?.length ?? 0));
   const pendingCount = Math.round(useCountUp(pending));
+
+  const myUnlocks = React.useMemo(() => (profile ? achievementsFor(requests ?? [], profile.id) : []), [requests, profile]);
+  const myXp = profile ? xpOf(requests ?? [], profile.id) : 0;
+  const myLvl = levelOf(myXp);
+  React.useEffect(() => {
+    if (!profile || !requests || requests.length === 0) return;
+    const ids = myUnlocks.filter(isUnlocked).map((u) => u.id);
+    let seen: string[] = [];
+    try {
+      seen = JSON.parse(window.localStorage.getItem("budgetapp-seen-ach") ?? "[]");
+    } catch {
+      seen = [];
+    }
+    const fresh = ids.filter((id) => !seen.includes(id));
+    if (fresh.length > 0) {
+      try {
+        window.localStorage.setItem("budgetapp-seen-ach", JSON.stringify([...seen, ...fresh]));
+      } catch {
+        /* storage unavailable */
+      }
+      toast({ title: t("reward.unlockedToast"), description: achMeta(fresh[0], lang).name });
+    }
+  }, [profile, requests, myUnlocks, toast, t, lang]);
 
   const hour = new Date().getHours();
   const greetKey = hour < 11 ? "dash.greetMorning" : hour < 15 ? "dash.greetMidday" : hour < 19 ? "dash.greetEvening" : "dash.greetNight";
@@ -97,6 +125,21 @@ export default function Dashboard(){
       <Card className="card-lift"><CardHeader><CardTitle className="text-sm font-medium flex items-center gap-2"><span className="rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 p-1.5 text-white"><Clock className="h-4 w-4" /></span>{t("dash.pendingRequests")}</CardTitle></CardHeader><CardContent><div className="stat-value">{pendingCount}</div></CardContent></Card>
       </>}
     </div>
+    <Card className="overflow-hidden">
+      <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white p-4 flex flex-wrap items-center gap-3">
+        <Trophy className="h-6 w-6 shrink-0" />
+        <div className="flex-1 min-w-[160px]">
+          <div className="font-bold">{t("reward.level", { n: myLvl.level })} • {myXp} XP</div>
+          <div className="mt-1.5 h-2 rounded-full bg-white/25 overflow-hidden"><div className="h-2 rounded-full bg-white transition-all" style={{ width: `${Math.round((myLvl.into / myLvl.span) * 100)}%` }} /></div>
+        </div>
+        <div className="hidden sm:flex gap-1.5">
+          {myUnlocks.filter(isUnlocked).slice(0, 3).map((u) => (
+            <span key={u.id} title={achMeta(u.id, lang).name} className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium">{achMeta(u.id, lang).name}</span>
+          ))}
+        </div>
+        <Link to="/rewards"><Button variant="secondary" size="sm">{t("reward.viewAll")}</Button></Link>
+      </div>
+    </Card>
     <div className="grid gap-4 md:grid-cols-2">
       <Card><CardHeader><CardTitle>{t("dash.spendByBudget")}</CardTitle></CardHeader><CardContent className="h-[260px]">
         {chartData.length===0 ? <div className="text-sm text-muted-foreground">{t("dash.noBudgets")}</div> :

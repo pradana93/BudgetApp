@@ -10,6 +10,7 @@ const en = {
   "nav.requests": "Requests",
   "nav.settings": "Settings",
   "nav.admin": "Admin",
+  "nav.rewards": "Rewards",
   "nav.signOut": "Sign out",
   "nav.tagline": "Xero-style reconciliation",
   "nav.userFallback": "User",
@@ -377,6 +378,14 @@ const en = {
   "set.exportDesc": "Download all budgets, requests and ledger entries.",
   "set.exported": "Data exported",
   "set.exportFailed": "Export failed",
+
+  "reward.title": "Rewards",
+  "reward.sub": "Little wins for good money habits.",
+  "reward.level": "Level {n}",
+  "reward.duo": "Duo scoreboard",
+  "reward.you": "You",
+  "reward.viewAll": "View all",
+  "reward.unlockedToast": "Achievement unlocked",
 };
 
 export type StringKey = keyof typeof en;
@@ -391,6 +400,7 @@ const id: Record<StringKey, string> = {
   "nav.requests": "Permintaan",
   "nav.settings": "Pengaturan",
   "nav.admin": "Admin",
+  "nav.rewards": "Hadiah",
   "nav.signOut": "Keluar",
   "nav.tagline": "Rekonsiliasi ala Xero",
   "nav.userFallback": "Pengguna",
@@ -758,6 +768,14 @@ const id: Record<StringKey, string> = {
   "set.exportDesc": "Unduh semua anggaran, permintaan, dan entri ledger.",
   "set.exported": "Data diekspor",
   "set.exportFailed": "Ekspor gagal",
+
+  "reward.title": "Hadiah",
+  "reward.sub": "Kemenangan kecil untuk kebiasaan keuangan yang baik.",
+  "reward.level": "Level {n}",
+  "reward.duo": "Papan skor berpasangan",
+  "reward.you": "Kamu",
+  "reward.viewAll": "Lihat semua",
+  "reward.unlockedToast": "Pencapaian terbuka",
 };
 
 export const STRINGS: Record<Lang, Record<StringKey, string>> = { en, id };
