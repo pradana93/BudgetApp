@@ -9,6 +9,7 @@ import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CommandPalette } from "@/components/CommandPalette";
 import { LanguageToggle, useLang } from "@/i18n/LanguageContext";
+import { initialsOf, useAvatarTheme } from "@/lib/avatar";
 import type { StringKey } from "@/i18n/translations";
 
 const nav = [
@@ -42,20 +43,10 @@ function titleFor(pathname: string): StringKey {
   return "nav.dashboard";
 }
 
-function initialsOf(name: string): string {
-  return (
-    name
-      .split(/[\s@._-]+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => (w[0] ?? "").toUpperCase())
-      .join("") || "?"
-  );
-}
-
 export function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useSession();
   const { t } = useLang();
+  const avatarCls = useAvatarTheme(profile?.id);
   const baseItems = [...nav.slice(0, 3), rewardsNav, nav[3]];
   const fullItems = profile?.role === "owner" ? [...baseItems.slice(0, 4), adminNav, baseItems[4]] : baseItems;
   const loc = useLocation();
@@ -137,7 +128,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="p-3 border-t border-border/60">
           <div className="rounded-2xl bg-muted/50 border border-border/60 p-3 flex items-center gap-2.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarCls} text-xs font-bold text-white`}>
               {initialsOf(displayName)}
             </span>
             <div className="min-w-0 flex-1">
@@ -162,7 +153,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Button>
             <ThemeToggle />
             <LanguageToggle />
-            <span title={profile?.email ?? undefined} className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-[11px] font-bold text-white">
+            <span title={profile?.email ?? undefined} className={`ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${avatarCls} text-[11px] font-bold text-white`}>
               {initialsOf(displayName)}
             </span>
           </div>

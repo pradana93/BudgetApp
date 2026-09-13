@@ -374,6 +374,16 @@ const en = {
   "set.storageB": "is private; access via signed URLs only. Path",
   "set.signOut": "Sign out",
 
+  "profile.memberSince": "Member since",
+  "profile.filed": "Requests filed",
+  "profile.reconciled": "Reconciled",
+  "profile.approvalRate": "Approval rate",
+  "profile.customize": "Avatar style",
+  "profile.customizeDesc": "Pick a gradient. It shows across the app instantly.",
+  "profile.editTitle": "Edit profile",
+  "profile.security": "Security",
+  "profile.yourData": "Your data",
+
   "me.title": "Configuration missing",
   "me.body": "VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is not set. The app cannot connect to the database. Set both in the Vercel dashboard under Settings → Environment Variables (and in .env.local for local dev), then redeploy.",
 
@@ -792,6 +802,16 @@ const id: Record<StringKey, string> = {
   "set.storageA": "Bucket struk",
   "set.storageB": "bersifat privat; akses hanya via URL bertanda. Path",
   "set.signOut": "Keluar",
+
+  "profile.memberSince": "Anggota sejak",
+  "profile.filed": "Permintaan diajukan",
+  "profile.reconciled": "Direkonsiliasi",
+  "profile.approvalRate": "Tingkat persetujuan",
+  "profile.customize": "Gaya avatar",
+  "profile.customizeDesc": "Pilih gradien. Langsung tampil di seluruh aplikasi.",
+  "profile.editTitle": "Ubah profil",
+  "profile.security": "Keamanan",
+  "profile.yourData": "Data Anda",
 
   "me.title": "Konfigurasi hilang",
   "me.body": "VITE_SUPABASE_URL atau VITE_SUPABASE_ANON_KEY belum diset. Aplikasi tidak bisa terhubung ke database. Set keduanya di dasbor Vercel pada Settings → Environment Variables (dan di .env.local untuk dev lokal), lalu redeploy.",
