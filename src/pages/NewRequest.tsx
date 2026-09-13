@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
 import { useCategories, normalizeCategory } from "@/hooks/useCategories";
 import { suggestCategory } from "@/lib/matcher";
+import { findDuplicates } from "@/lib/advisor";
 import { formatMoney, isValidMoney } from "@/lib/money";
 import { formatDate } from "@/lib/datetime";
 import { Sparkles, Check } from "lucide-react";
@@ -91,9 +92,9 @@ export default function NewRequest(){
     queryKey: ["my-history"],
     queryFn: async () => {
       if (!profile) return [];
-      const { data, error } = await supabase.from("reimbursement_requests").select("merchant,category,amount").eq("requester_id", profile.id).order("created_at", { ascending: false }).limit(200);
+      const { data, error } = await supabase.from("reimbursement_requests").select("id,merchant,category,amount,status,created_at").eq("requester_id", profile.id).order("created_at", { ascending: false }).limit(200);
       if (error) throw error;
-      return (data ?? []) as { merchant: string | null; category: string; amount: number }[];
+      return (data ?? []) as { id: string; merchant: string | null; category: string; amount: number; status: string; created_at: string }[];
     },
     enabled: !!profile,
   });
@@ -104,6 +105,14 @@ export default function NewRequest(){
   }, [form.merchant, form.amount, categories, history, lang]);
 
   React.useEffect(() => { setManualCat(false); }, [form.merchant]);
+
+  const dupWarn = React.useMemo(() => {
+    if (!form.merchant.trim() || !(Number(form.amount) > 0)) return [];
+    return findDuplicates(
+      { merchant: form.merchant, amount: form.amount, category: form.category, status: "pending", created_at: new Date().toISOString() },
+      (history ?? []).filter((h) => h.status === "pending")
+    );
+  }, [form.merchant, form.amount, form.category, history]);
 
   React.useEffect(() => {
     if (!manualCat && suggestion?.auto && form.category !== suggestion.category) {
@@ -292,6 +301,12 @@ export default function NewRequest(){
                 <Button type="button" variant="outline" onClick={onPropose} disabled={propose.isPending}>{t("match.propose")}</Button>
               </div>
               {proposalErr && <div className="text-sm text-destructive">{proposalErr}</div>}
+            </div>
+          )}
+          {dupWarn.length > 0 && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm space-y-1">
+              <div className="font-semibold">{t("dup.title")}</div>
+              <div className="text-muted-foreground">{t("dup.desc", { n: dupWarn.length })}</div>
             </div>
           )}
           <div><Label>{t("new.merchant")}</Label><Input value={form.merchant} onChange={e=>setForm({...form,merchant:e.target.value})} placeholder={t("new.merchantPh")} maxLength={200} list="merchant-history" />

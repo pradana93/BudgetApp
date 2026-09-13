@@ -33,7 +33,7 @@ export default function BudgetDetail(){
   }});
 
   const insights = React.useMemo(
-    () => analyzeBudget(ledger ?? [], requests ?? [], budget?.available_amount ?? 0, budget?.currency ?? "IDR", new Date(), lang),
+    () => analyzeBudget(ledger ?? [], requests ?? [], budget?.available_amount ?? 0, budget?.currency ?? "IDR", new Date(), lang, budget?.period_end ?? null),
     [ledger, requests, budget, lang]
   );
   const series = React.useMemo(() => cumulativeSpendSeries(ledger ?? [], dateLocale(lang)), [ledger, lang]);  const health = budgetHealth({

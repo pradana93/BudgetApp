@@ -1,5 +1,6 @@
 import Decimal from "decimal.js";
 import { formatMoney } from "./money";
+import { forecastSpend } from "./advisor";
 
 export type InsightLang = "en" | "id";
 
@@ -32,6 +33,7 @@ export type BudgetInsights = {
   largestSpend: { amount: string; label: string; date: string } | null;
   anomalies: string[];
   narrative: string[];
+  forecast: { projected: string; remaining: string; date: string; onTrack: boolean } | null;
 };
 
 const DAY_MS = 86_400_000;
@@ -50,6 +52,7 @@ type Templates = {
   anomOver: (pending: string, available: string) => string;
   anomRunway: (days: number) => string;
   anomEmpty: () => string;
+  forecast: (projected: string, date: string, remaining: string, ok: boolean) => string;
 };
 
 const TEXT: Record<InsightLang, Templates> = {
@@ -64,6 +67,7 @@ const TEXT: Record<InsightLang, Templates> = {
     anomOver: (pending, available) => `Over-committed: pending requests (${pending}) exceed available balance (${available}).`,
     anomRunway: (days) => `At the current burn rate this budget runs dry in ~${days} day(s). Consider a top-up or slowing approvals.`,
     anomEmpty: () => "No movements yet — approve and reconcile requests to generate ledger activity.",
+    forecast: (p, d, r, ok) => `Pace check: projected ${p} by ${d}, leaving ${r} — ${ok ? "on track" : "over budget"}.`,
   },
   id: {
     summary: (m, out, inn, net) => `${m} pergerakan ledger: ${out} keluar, ${inn} masuk (neto ${net}).`,
@@ -76,6 +80,7 @@ const TEXT: Record<InsightLang, Templates> = {
     anomOver: (pending, available) => `Kelebihan komitmen: permintaan menunggu (${pending}) melebihi saldo tersedia (${available}).`,
     anomRunway: (days) => `Dengan laju saat ini anggaran habis dalam ~${days} hari. Pertimbangkan top-up atau perlambat persetujuan.`,
     anomEmpty: () => "Belum ada pergerakan — setujui dan rekonsiliasi permintaan untuk menghasilkan aktivitas ledger.",
+    forecast: (p, d, r, ok) => `Cek laju: proyeksi ${p} pada ${d}, sisa ${r} — ${ok ? "sesuai jalur" : "melebihi anggaran"}.`,
   },
 };
 
@@ -90,7 +95,8 @@ export function analyzeBudget(
   availableAmount: number | string,
   currency = "IDR",
   now: Date = new Date(),
-  lang: InsightLang = "en"
+  lang: InsightLang = "en",
+  periodEnd: string | null | undefined = null
 ): BudgetInsights {
   const t = TEXT[lang] ?? TEXT.en;
   const money = (v: number) => formatMoney(v, currency);
@@ -179,6 +185,11 @@ export function analyzeBudget(
     narrative.push(t.pending(pending.length, money(pendingExposure.toNumber())));
   }
 
+  const fc = forecastSpend(burnRate.toNumber(), available.toNumber(), periodEnd, now);
+  if (fc) {
+    narrative.push(t.forecast(money(Number(fc.projected)), fc.date, money(Number(fc.remaining)), fc.onTrack));
+  }
+
   return {
     movementCount: ledger.length,
     totalDebit: totalDebit.toFixed(2),
@@ -192,6 +203,7 @@ export function analyzeBudget(
     largestSpend,
     anomalies,
     narrative,
+    forecast: fc ? { projected: fc.projected, remaining: fc.remaining, date: fc.date, onTrack: fc.onTrack } : null,
   };
 }
 

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { formatMoney, isValidMoney } from "@/lib/money";
 import { formatDate, isOverdue, timeAgo } from "@/lib/datetime";
+import { approvalRisk, findDuplicates } from "@/lib/advisor";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
@@ -38,6 +39,26 @@ export default function RequestDetail(){
     const { data, error } = await supabase.from("reimbursement_requests").select("*").eq("id",id!).single(); if(error) throw error; return data;
   }});
 
+  const { data: budget } = useQuery({
+    queryKey: ["budget-for-risk", data?.budget_id],
+    queryFn: async () => {
+      const { data: b, error } = await supabase.from("budgets").select("total_amount,allocated_amount,available_amount,currency").eq("id", data!.budget_id).single();
+      if (error) throw error;
+      return b;
+    },
+    enabled: !!data,
+  });
+
+  const { data: siblings } = useQuery({
+    queryKey: ["budget-requests", data?.budget_id],
+    queryFn: async () => {
+      const { data: list, error } = await supabase.from("reimbursement_requests").select("id,merchant,amount,category,status,created_at").eq("budget_id", data!.budget_id).order("created_at", { ascending: false }).limit(100);
+      if (error) throw error;
+      return (list ?? []) as { id: string; merchant: string | null; amount: number; category: string; status: string; created_at: string }[];
+    },
+    enabled: !!data,
+  });
+
   React.useEffect(()=>{
     if(data?.receipt_url){
       supabase.storage.from("receipts").createSignedUrl(data.receipt_url, 60).then(({data})=> { if(data?.signedUrl) setReceiptUrl(data.signedUrl); });
@@ -47,6 +68,23 @@ export default function RequestDetail(){
   const isMine = !!profile && !!data && profile.id === data.requester_id;
   const canEdit = isMine && data?.status === "pending";
   const canDelete = (isMine && data?.status === "pending") || (isOwner && data?.status !== "reconciled");
+
+  const risk = data
+    ? approvalRisk(
+        { merchant: data.merchant, amount: data.amount, category: data.category, status: data.status, created_at: data.created_at, receipt_url: data.receipt_url },
+        budget ? { available_amount: budget.available_amount, total_amount: budget.total_amount } : null,
+        siblings ?? [],
+        lang
+      )
+    : null;
+  const dups = data
+    ? findDuplicates(
+        { id: data.id, merchant: data.merchant, amount: data.amount, category: data.category, status: data.status, created_at: data.created_at },
+        siblings ?? []
+      )
+    : [];
+  const riskVariant = risk?.level === "risky" ? "destructive" : risk?.level === "review" ? "pending" : "approved";
+  const riskLabel = risk?.level === "risky" ? t("risk.risky") : risk?.level === "review" ? t("risk.review") : t("risk.safe");
 
   const approve = useMutation({ mutationFn: async()=>{
     const { error } = await supabase.rpc("approve_request",{ p_request_id: id! });
@@ -138,6 +176,26 @@ export default function RequestDetail(){
       {data.rejection_reason && <div><span className="text-muted-foreground">{t("rd.rejectReason")}</span><div>{data.rejection_reason}</div></div>}
       {receiptUrl ? <div><Label>{t("rd.receipt")}</Label><a href={receiptUrl} target="_blank" rel="noreferrer" className="text-primary underline block">{t("rd.viewReceipt")}</a><img src={receiptUrl} alt="receipt" className="mt-2 max-h-64 rounded border" onError={e=> (e.currentTarget.style.display="none")} /></div> : data.receipt_url ? <div className="text-muted-foreground">{t("rd.receiptSigning", { path: data.receipt_url })}</div> : <div className="text-muted-foreground">{t("rd.noReceipt")}</div>}
     </CardContent></Card>
+
+    {risk && (
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base">{t("risk.title")} <Badge variant={riskVariant}>{riskLabel} {risk.score}</Badge></CardTitle></CardHeader>
+        <CardContent>
+          <div className="h-1.5 rounded bg-muted overflow-hidden mb-2"><div className={`h-1.5 rounded ${risk.level === "risky" ? "bg-destructive" : risk.level === "review" ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${risk.score}%` }} /></div>
+          <ul className="text-sm text-muted-foreground space-y-0.5">{risk.reasons.map((r, i) => <li key={i}>• {r}</li>)}</ul>
+        </CardContent>
+      </Card>
+    )}
+
+    {dups.length > 0 && (
+      <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm space-y-1">
+        <div className="font-semibold">{t("dup.title")}</div>
+        <div className="text-muted-foreground">{t("dup.desc", { n: dups.length })}</div>
+        {dups.slice(0, 3).map((d) => (
+          <div key={d.id}><Link to={`/requests/${d.id}`} className="text-primary underline">{d.merchant ?? d.category} — {formatMoney(Number(d.amount))}</Link></div>
+        ))}
+      </div>
+    )}
 
     {canEdit && !editing && <div><Button variant="outline" onClick={startEdit}>{t("rd.edit")}</Button></div>}
 

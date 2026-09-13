@@ -10,6 +10,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { formatMoney } from "@/lib/money";
 import { formatDate, formatDateTime } from "@/lib/datetime";
 import { reconciliationScore } from "@/lib/matcher";
+import { approvalRisk } from "@/lib/advisor";
 import { useToast } from "@/components/ui/toast";
 import { useRealtime } from "@/hooks/useRealtime";
 import { normalizeCategory, useCategories } from "@/hooks/useCategories";
@@ -162,6 +163,20 @@ export default function Admin() {
   }, [requests]);
 
   const budgetName = (id: string) => budgets?.find((b) => b.id === id)?.name ?? String(id || "").slice(0, 8);
+  const riskOf = (r: Req) => {
+    const b = budgets?.find((x) => x.id === r.budget_id);
+    return approvalRisk(
+      { merchant: r.merchant, amount: r.amount, category: r.category, status: r.status, created_at: r.created_at, receipt_url: r.receipt_url },
+      b ? { available_amount: b.available_amount, total_amount: b.total_amount } : null,
+      (requests ?? []).map((x) => ({ merchant: x.merchant, amount: x.amount, category: x.category, status: x.status, created_at: x.created_at })),
+      lang
+    );
+  };
+  const riskMeta = {
+    safe: { variant: "approved" as const, label: t("risk.safe") },
+    review: { variant: "pending" as const, label: t("risk.review") },
+    risky: { variant: "destructive" as const, label: t("risk.risky") },
+  };
 
   const approved = React.useMemo(() => (requests ?? []).filter((r) => r.status === "approved"), [requests]);
   const knownMerchants = React.useMemo(() => {
@@ -269,12 +284,13 @@ export default function Admin() {
         <CardHeader><CardTitle>{t("admin.queue")} {pending.length > 0 && <Badge variant="pending" className="ml-2">{t("admin.waiting", { n: pending.length })}</Badge>}</CardTitle></CardHeader>
         <CardContent>
           {pending.length === 0 ? <div className="text-sm text-muted-foreground">{t("admin.clear")}</div> :
-          <Table><TableHeader><TableRow><TableHead>{t("admin.qRequest")}</TableHead><TableHead>{t("admin.qBudget")}</TableHead><TableHead>{t("admin.qAmount")}</TableHead><TableHead>{t("admin.qReason")}</TableHead><TableHead>{t("admin.qActions")}</TableHead></TableRow></TableHeader>
+          <Table><TableHeader><TableRow><TableHead>{t("admin.qRequest")}</TableHead><TableHead>{t("admin.qBudget")}</TableHead><TableHead>{t("admin.qAmount")}</TableHead><TableHead>{t("risk.title")}</TableHead><TableHead>{t("admin.qReason")}</TableHead><TableHead>{t("admin.qActions")}</TableHead></TableRow></TableHeader>
           <TableBody>{pending.map((r) => (
             <TableRow key={r.id}>
               <TableCell><Link to={`/requests/${r.id}`} className="text-primary underline">{r.merchant ?? r.category}</Link><div className="text-xs text-muted-foreground">{r.category} • {formatDate(r.created_at, lang)}</div></TableCell>
               <TableCell>{budgetName(r.budget_id)}</TableCell>
               <TableCell>{formatMoney(Number(r.amount))}</TableCell>
+              <TableCell><Badge variant={riskMeta[riskOf(r).level].variant} title={riskOf(r).reasons.join(" • ")}>{riskMeta[riskOf(r).level].label}</Badge></TableCell>
               <TableCell><Input placeholder={t("admin.reasonPh")} value={reasons[r.id] ?? ""} onChange={(e) => setReasons({ ...reasons, [r.id]: e.target.value })} className="min-w-[160px]" /></TableCell>
               <TableCell><div className="flex gap-2">
                 <Button size="sm" onClick={() => approve.mutate(r.id)} disabled={approve.isPending}>{t("admin.approve")}</Button>

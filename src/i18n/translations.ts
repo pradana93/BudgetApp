@@ -407,6 +407,22 @@ const en = {
   "eb.title": "Something went wrong",
   "eb.reload": "Reload",
 
+  "risk.safe": "Safe",
+  "risk.review": "Needs review",
+  "risk.risky": "Risky",
+  "risk.title": "Approval risk",
+
+  "dup.title": "Possible duplicate",
+  "dup.desc": "{n} similar request(s) on file",
+
+  "ask.title": "Ask BudgetApp",
+  "ask.ph": "e.g. How much did we spend on groceries?",
+  "ask.button": "Ask",
+  "ask.thinking": "Thinking…",
+  "ask.noAnswer": "I don't know yet — try asking about spending, budgets or pending requests.",
+  "ask.ai": "AI",
+  "ask.local": "On-device",
+
   "tour.skip": "Skip",
   "tour.next": "Next",
   "tour.back": "Back",
@@ -930,6 +946,22 @@ const id: Record<StringKey, string> = {
 
   "eb.title": "Terjadi kesalahan",
   "eb.reload": "Muat ulang",
+
+  "risk.safe": "Aman",
+  "risk.review": "Perlu tinjau",
+  "risk.risky": "Berisiko",
+  "risk.title": "Risiko persetujuan",
+
+  "dup.title": "Kemungkinan duplikat",
+  "dup.desc": "{n} permintaan mirip tercatat",
+
+  "ask.title": "Tanya BudgetApp",
+  "ask.ph": "mis. Berapa belanja groceries?",
+  "ask.button": "Tanya",
+  "ask.thinking": "Berpikir…",
+  "ask.noAnswer": "Belum tahu — coba tanya soal belanja, anggaran, atau permintaan menunggu.",
+  "ask.ai": "AI",
+  "ask.local": "Di perangkat",
 
   "tour.skip": "Lewati",
   "tour.next": "Lanjut",
