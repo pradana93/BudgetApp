@@ -12,13 +12,16 @@ import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
 import { useCategories } from "@/hooks/useCategories";
+import { suggestCategory } from "@/lib/matcher";
+import { Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { getRequestSchema } from "@/schemas/budget";
 import { z } from "zod";
 
 export default function NewRequest(){
   const { profile } = useSession();
   const { toast } = useToast();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const nav = useNavigate();
   const [form,setForm]=React.useState({ budget_id:"", amount:"", category:"groceries" as string, merchant:"", description:"", due_date:"" });
   const [file,setFile]=React.useState<File|null>(null);
@@ -34,6 +37,34 @@ export default function NewRequest(){
     if (!categories.includes(form.category)) setForm((f) => ({ ...f, category: categories[0] ?? f.category }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories]);
+
+  const [manualCat, setManualCat] = React.useState(false);
+
+  const { data: history } = useQuery({
+    queryKey: ["my-history"],
+    queryFn: async () => {
+      if (!profile) return [];
+      const { data, error } = await supabase.from("reimbursement_requests").select("merchant,category,amount").eq("requester_id", profile.id).order("created_at", { ascending: false }).limit(200);
+      if (error) throw error;
+      return (data ?? []) as { merchant: string | null; category: string; amount: number }[];
+    },
+    enabled: !!profile,
+  });
+
+  const suggestion = React.useMemo(() => {
+    if (!form.merchant.trim() && !form.amount.trim()) return null;
+    return suggestCategory({ merchant: form.merchant, amount: form.amount, history: history ?? [], categories, lang });
+  }, [form.merchant, form.amount, categories, history, lang]);
+
+  // Re-arm auto-pick only when the merchant itself changes — typing an amount
+  // after a manual pick must never clobber the user's choice.
+  React.useEffect(() => { setManualCat(false); }, [form.merchant]);
+
+  React.useEffect(() => {
+    if (!manualCat && suggestion?.auto && form.category !== suggestion.category) {
+      setForm((f) => ({ ...f, category: suggestion.category }));
+    }
+  }, [suggestion, manualCat, form.category]);
 
   const { data: budgets } = useQuery({ queryKey:["budgets"], queryFn: async()=>{
     const { data, error } = await supabase.from("budgets").select("id,name").eq("status","active"); if(error) throw error; return data;
@@ -68,7 +99,19 @@ export default function NewRequest(){
       <form onSubmit={onSubmit} className="space-y-4">
         <div><Label>{t("new.budget")}</Label><Select value={form.budget_id} onChange={e=>setForm({...form,budget_id:e.target.value})} required><option value="">{t("new.selectBudget")}</option>{budgets?.map(b=> <option key={b.id} value={b.id}>{b.name}</option>)}</Select></div>
         <div><Label>{t("new.amount")}</Label><Input value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder={t("new.amountPh")} required /></div>
-        <div><Label>{t("new.category")}</Label><Select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{categories.map((c)=><option key={c} value={c}>{c}</option>)}</Select></div>
+        <div><Label>{t("new.category")}</Label><Select value={form.category} onChange={e=>{ setManualCat(true); setForm({...form,category:e.target.value}); }}>{categories.map((c)=><option key={c} value={c}>{c}</option>)}</Select></div>
+        {suggestion && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span>{t("match.suggested")}: <b>{suggestion.category}</b> ({suggestion.confidence}%)</span>
+              {suggestion.auto && <Badge variant="approved">{t("match.auto")}</Badge>}
+              {form.category !== suggestion.category && <Button size="sm" variant="outline" onClick={()=>{ setManualCat(true); setForm({...form,category:suggestion.category}); }}>{t("match.apply")}</Button>}
+            </div>
+            <div className="h-1.5 rounded bg-muted overflow-hidden"><div className="h-1.5 rounded bg-gradient-to-r from-blue-500 to-violet-500 transition-all" style={{ width: `${suggestion.confidence}%` }} /></div>
+            <ul className="text-xs text-muted-foreground space-y-0.5">{suggestion.reasons.map((r, i) => <li key={i}>• {r}</li>)}</ul>
+          </div>
+        )}
         <div><Label>{t("new.merchant")}</Label><Input value={form.merchant} onChange={e=>setForm({...form,merchant:e.target.value})} placeholder={t("new.merchantPh")} /></div>
         <div><Label>{t("new.description")}</Label><Textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder={t("new.descPh")} /></div>
         <div><Label>{t("new.dueDate")}</Label><Input type="date" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})} /></div>

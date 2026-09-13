@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { formatMoney } from "@/lib/money";
 import { formatDate, formatDateTime } from "@/lib/datetime";
+import { reconciliationScore } from "@/lib/matcher";
 import { useToast } from "@/components/ui/toast";
 import { useRealtime } from "@/hooks/useRealtime";
 import { normalizeCategory, useCategories } from "@/hooks/useCategories";
@@ -16,7 +17,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 type Budget = { id: string; name: string; total_amount: number; allocated_amount: number; available_amount: number; currency: string; status: string };
-type Req = { id: string; budget_id: string; amount: number; category: string; merchant: string | null; status: string; created_at: string };
+type Req = { id: string; budget_id: string; amount: number; category: string; merchant: string | null; status: string; created_at: string; receipt_url: string | null; due_date: string | null };
 type Ledger = { id: string; budget_id: string; debit: number; credit: number; reference_type: string; description: string | null; created_at: string };
 type Profile = { id: string; email: string; display_name: string | null; role: string; created_at: string };
 
@@ -70,7 +71,8 @@ export default function Admin() {
     onError: (e: Error) => toast({ title: t("admin.failReject"), description: e.message, variant: "destructive" }),
   });
 
-  const topup = useMutation({    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
+  const topup = useMutation({
+    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
       const { error } = await supabase.rpc("topup_budget", { p_budget_id: id, p_amount: amount, p_description: "Admin top-up" });
       if (error) throw error;
     },
@@ -120,6 +122,53 @@ export default function Admin() {
 
   const budgetName = (id: string) => budgets?.find((b) => b.id === id)?.name ?? id.slice(0, 8);
 
+  const approved = React.useMemo(() => (requests ?? []).filter((r) => r.status === "approved"), [requests]);
+  const knownMerchants = React.useMemo(() => {
+    const s = new Set<string>();
+    for (const r of requests ?? []) {
+      const m = (r.merchant ?? "").trim().toLowerCase();
+      if (m) s.add(m);
+    }
+    return s;
+  }, [requests]);
+  const availableOf = (budgetId: string) => {
+    const b = budgets?.find((x) => x.id === budgetId);
+    return b ? Number(b.available_amount) : 0;
+  };
+  const scoreOf = (r: Req) => reconciliationScore({
+    amount: r.amount,
+    receiptUrl: r.receipt_url,
+    dueDate: r.due_date,
+    available: availableOf(r.budget_id),
+    knownMerchant: knownMerchants.has((r.merchant ?? "").trim().toLowerCase()),
+    lang,
+  });
+
+  const [bulk, setBulk] = React.useState({ running: false, done: 0, total: 0 });
+  const reconcileOne = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("reconcile_request", { p_request_id: id, p_note: "" });
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidate(); toast({ title: t("admin.reconciledOne") }); },
+    onError: (e: Error) => toast({ title: t("admin.failRecon"), description: e.message, variant: "destructive" }),
+  });
+
+  const bulkReconcile = async (threshold: number) => {
+    const targets = approved.filter((r) => scoreOf(r).score >= threshold);
+    if (targets.length === 0 || bulk.running) return;
+    setBulk({ running: true, done: 0, total: targets.length });
+    let ok = 0;
+    for (const r of targets) {
+      const { error } = await supabase.rpc("reconcile_request", { p_request_id: r.id, p_note: "Bulk auto-reconcile" });
+      if (!error) ok++;
+      setBulk((b) => ({ ...b, done: b.done + 1 }));
+    }
+    invalidate();
+    setBulk({ running: false, done: 0, total: 0 });
+    toast({ title: t("admin.bulkDone", { done: ok, failed: targets.length - ok }) });
+  };
+
   const exportCsv = () => {
     if (!ledger) return;
     const rows = [["date", "budget", "type", "debit", "credit", "description"],
@@ -165,6 +214,45 @@ export default function Admin() {
               </div></TableCell>
             </TableRow>))}
           </TableBody></Table>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex flex-wrap items-center gap-2">{t("admin.inbox")}
+            {approved.length > 0 && <Badge variant="approved">{t("admin.ready", { n: approved.length })}</Badge>}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">{t("admin.inboxSub")}</p>
+        </CardHeader>
+        <CardContent>
+          {approved.length === 0 ? <div className="text-sm text-muted-foreground">{t("admin.noApproved")}</div> : <>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Button onClick={() => bulkReconcile(80)} disabled={bulk.running || reconcileOne.isPending}>
+                {bulk.running ? t("admin.reconciling", { done: bulk.done, total: bulk.total }) : t("admin.reconcileAll", { n: 80 })}
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {approved.map((r) => {
+                const s = scoreOf(r);
+                return (
+                  <div key={r.id} className="rounded-lg border p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <Link to={`/requests/${r.id}`} className="text-primary underline font-medium">{r.merchant ?? r.category}</Link>
+                        <span className="text-muted-foreground">{formatMoney(Number(r.amount))} • {budgetName(r.budget_id)}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 rounded bg-muted overflow-hidden"><div className="h-1.5 rounded bg-gradient-to-r from-amber-500 via-blue-500 to-emerald-500" style={{ width: `${s.score}%` }} /></div>
+                        <span className="text-xs font-medium tabular whitespace-nowrap">{t("admin.score")} {s.score}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">{s.reasons.join(" • ")}{s.warnings.length > 0 && <span className="text-destructive"> • {s.warnings.join(" • ")}</span>}</div>
+                    </div>
+                    <Button size="sm" onClick={() => reconcileOne.mutate(r.id)} disabled={reconcileOne.isPending || bulk.running}>{t("admin.reconcile")}</Button>
+                  </div>
+                );
+              })}
+            </div>
+          </>}
         </CardContent>
       </Card>
 
