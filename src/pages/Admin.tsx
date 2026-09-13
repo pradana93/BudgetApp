@@ -37,6 +37,7 @@ export default function Admin() {
   const [reasons, setReasons] = React.useState<Record<string, string>>({});
   const [topups, setTopups] = React.useState<Record<string, string>>({});
   const [limit, setLimit] = React.useState(100);
+  const [resetText, setResetText] = React.useState("");
   const { categories } = useCategories();
   const [newCat, setNewCat] = React.useState("");
   const [catErr, setCatErr] = React.useState<string | null>(null);
@@ -194,8 +195,27 @@ export default function Admin() {
     onError: (e: Error) => toast({ title: t("admin.failRecon"), description: e.message, variant: "destructive" }),
   });
 
-  const bulkReconcile = async (threshold: number) => {
-    const targets = approved.filter((r) => scoreOf(r).score >= threshold);
+  const resetDb = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("reset_all_data");
+      if (error) throw error;
+      return (data ?? {}) as Record<string, number>;
+    },
+    onSuccess: (counts) => {
+      setResetText("");
+      qc.invalidateQueries({ queryKey: ["budgets"] });
+      qc.invalidateQueries({ queryKey: ["requests"] });
+      qc.invalidateQueries({ queryKey: ["admin-ledger"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["notifications-unread"] });
+      qc.invalidateQueries({ queryKey: ["goals"] });
+      const total = Object.values(counts).reduce((s, n) => s + (Number(n) || 0), 0);
+      toast({ title: `${t("admin.resetDone")} — ${total} rows` });
+    },
+    onError: (e: Error) => toast({ title: t("admin.resetFailed"), description: e.message, variant: "destructive" }),
+  });
+
+  const bulkReconcile = async (threshold: number) => {    const targets = approved.filter((r) => scoreOf(r).score >= threshold);
     if (targets.length === 0 || bulk.running) return;
     setBulk({ running: true, done: 0, total: targets.length });
     let ok = 0;
@@ -381,6 +401,29 @@ export default function Admin() {
             <TableCell>{l.debit > 0 ? formatMoney(Number(l.debit)) : "-"}</TableCell><TableCell>{l.credit > 0 ? formatMoney(Number(l.credit)) : "-"}</TableCell></TableRow>))}
           </TableBody></Table>
           {(ledger?.length ?? 0) >= limit && <Button variant="outline" className="mt-3" onClick={()=>setLimit((l)=>l + 100)}>{t("admin.loadMore")}</Button>}
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/50">
+        <CardHeader><CardTitle className="text-destructive">{t("admin.danger")}</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">{t("admin.dangerDesc")}</p>
+          <div className="text-sm">
+            <span className="font-medium">{t("admin.willDelete")}</span>{" "}
+            {(budgets?.length ?? 0)} budgets • {(requests?.length ?? 0)} requests • {(ledger?.length ?? 0)} ledger
+          </div>
+          <div className="text-xs text-muted-foreground">{t("admin.kept")}</div>
+          <div className="flex flex-col sm:flex-row gap-2 max-w-md">
+            <Input placeholder="RESET" value={resetText} onChange={(e) => setResetText(e.target.value)} className="sm:max-w-[200px]" />
+            <Button
+              variant="destructive"
+              disabled={resetDb.isPending || resetText !== "RESET"}
+              onClick={() => resetDb.mutate()}
+            >
+              {resetDb.isPending ? t("admin.resetting") : t("admin.resetBtn")}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">{t("admin.typeReset")}</p>
         </CardContent>
       </Card>
     </div>

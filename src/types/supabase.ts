@@ -51,6 +51,7 @@ export type Database = {
       reconcile_request: { Args: { p_request_id: string; p_note: string }; Returns: Database["public"]["Tables"]["reconciliations"]["Row"] };
       unapprove_request: { Args: { p_request_id: string }; Returns: Database["public"]["Tables"]["reimbursement_requests"]["Row"] };
       unreconcile_request: { Args: { p_request_id: string; p_note?: string }; Returns: Database["public"]["Tables"]["reimbursement_requests"]["Row"] };
+      reset_all_data: { Args: Record<string, never>; Returns: Record<string, number> };
       topup_budget: { Args: { p_budget_id: string; p_amount: number; p_description: string }; Returns: Database["public"]["Tables"]["ledger_entries"]["Row"] };
       get_reconciliation_statement: { Args: { p_budget_id: string }; Returns: Database["public"]["Tables"]["ledger_entries"]["Row"][] };
       is_owner: { Args: Record<string, never>; Returns: boolean };
