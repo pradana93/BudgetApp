@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { formatMoney, isValidMoney } from "@/lib/money";
-import { formatDate, isOverdue } from "@/lib/datetime";
+import { formatDate, isOverdue, timeAgo } from "@/lib/datetime";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
@@ -31,6 +31,7 @@ export default function RequestDetail(){
   const [editErr,setEditErr]=React.useState<string|null>(null);
   const [confirmDelete,setConfirmDelete]=React.useState(false);
   const [confirmUndo,setConfirmUndo]=React.useState(false);
+  const [commentBody,setCommentBody]=React.useState("");
   const { categories } = useCategories();
 
   const { data, isLoading } = useQuery({ queryKey:["requests",id], queryFn: async()=>{
@@ -50,7 +51,7 @@ export default function RequestDetail(){
   const approve = useMutation({ mutationFn: async()=>{
     const { error } = await supabase.rpc("approve_request",{ p_request_id: id! });
     if(error) throw error;
-  }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["requests"]}); toast({title:t("rd.approved")}); }, onError:(e:Error)=> toast({title:t("rd.approveFailed"), description:e.message, variant:"destructive"}) });
+  }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["requests"]}); toast({title:t("rd.approved"), action:{ label: t("rd.viewBudget"), onClick: ()=>nav(`/budgets/${data?.budget_id}`) }}); }, onError:(e:Error)=> toast({title:t("rd.approveFailed"), description:e.message, variant:"destructive"}) });
 
   const reject = useMutation({ mutationFn: async()=>{
     const { error } = await supabase.rpc("reject_request",{ p_request_id:id!, p_reason: rejection });
@@ -84,6 +85,36 @@ export default function RequestDetail(){
     const { error } = await supabase.from("reimbursement_requests").delete().eq("id", id!);
     if(error) throw error;
   }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["requests"]}); toast({title:t("rd.deleted")}); nav("/requests"); }, onError:(e:Error)=> toast({title:t("rd.deleteFailed"), description:e.message, variant:"destructive"}) });
+
+  type Comment = { id: string; author_id: string; body: string; created_at: string };
+  const { data: comments } = useQuery({
+    queryKey: ["comments", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("request_comments").select("*").eq("request_id", id!).order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Comment[];
+    },
+  });
+
+  React.useEffect(() => {
+    const ch = supabase.channel(`comments-${id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "request_comments" }, () => {
+        qc.invalidateQueries({ queryKey: ["comments", id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc, id]);
+
+  const sendComment = useMutation({
+    mutationFn: async () => {
+      const body = commentBody.trim();
+      if (!body || !profile) throw new Error("empty");
+      const { error } = await supabase.from("request_comments").insert({ request_id: id!, author_id: profile.id, body: body.slice(0, 1000) });
+      if (error) throw error;
+    },
+    onSuccess: () => { setCommentBody(""); qc.invalidateQueries({ queryKey: ["comments", id] }); },
+    onError: (e: Error) => { if (e.message !== "empty") toast({ title: t("new.failed"), description: e.message, variant: "destructive" }); },
+  });
 
   const unapprove = useMutation({ mutationFn: async()=>{
     const { error } = await supabase.rpc("unapprove_request",{ p_request_id: id! });
@@ -147,5 +178,22 @@ export default function RequestDetail(){
         ? <Button variant="destructive" onClick={()=>setConfirmDelete(true)}>{t("rd.delete")}</Button>
         : <div className="flex items-center gap-2"><span className="text-sm">{t("rd.deleteConfirm")}</span><Button variant="destructive" onClick={()=>del.mutate()} disabled={del.isPending}>{del.isPending?t("rd.deleting"):t("rd.deleteYes")}</Button><Button variant="outline" onClick={()=>setConfirmDelete(false)}>{t("common.cancel")}</Button></div>}
     </div>}
+
+    <Card><CardHeader><CardTitle>{t("rd.comments")} {(comments?.length ?? 0) > 0 && <Badge variant="secondary" className="ml-1">{comments?.length}</Badge>}</CardTitle></CardHeader><CardContent className="space-y-3">
+      {(comments?.length ?? 0) === 0 && <div className="text-sm text-muted-foreground">{t("rd.noComments")}</div>}
+      {comments?.map((c) => (
+        <div key={c.id} className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${c.author_id === profile?.id ? "ml-auto bg-primary text-primary-foreground" : "bg-muted"}`}>
+          <div>{c.body}</div>
+          <div className={`mt-0.5 text-[11px] ${c.author_id === profile?.id ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+            {c.author_id === profile?.id ? t("reward.you") : ""} {c.author_id === profile?.id ? "•" : ""} {timeAgo(c.created_at, lang)}
+          </div>
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <Input value={commentBody} onChange={(e)=>setCommentBody(e.target.value)} placeholder={t("rd.commentPh")} maxLength={1000}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendComment.mutate(); } }} />
+        <Button onClick={()=>sendComment.mutate()} disabled={sendComment.isPending || commentBody.trim().length === 0}>{sendComment.isPending ? t("rd.sending") : t("rd.send")}</Button>
+      </div>
+    </CardContent></Card>
   </div>;
 }

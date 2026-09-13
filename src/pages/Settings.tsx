@@ -8,6 +8,8 @@ import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
+import { usePwa } from "@/hooks/usePwa";
+import { Download } from "lucide-react";
 import { AVATAR_THEMES, initialsOf, setAvatarTheme, useAvatarTheme } from "@/lib/avatar";
 import { xpOf, levelOf, type ReqLite } from "@/lib/gamify";
 import { formatDate } from "@/lib/datetime";
@@ -17,6 +19,7 @@ export default function Settings(){
   const { profile, session } = useSession();
   const { toast } = useToast();
   const { t, lang } = useLang();
+  const pwa = usePwa();
   const [displayName, setDisplayName] = React.useState(profile?.display_name ?? "");
   const [savingName, setSavingName] = React.useState(false);
   const [newPassword, setNewPassword] = React.useState("");
@@ -176,6 +179,28 @@ export default function Settings(){
       </p>
       <Button variant="outline" onClick={exportData} disabled={exporting}>{exporting ? t("common.loading") : t("set.export")}</Button>
       <p className="text-xs text-muted-foreground">{t("set.exportDesc")}</p>
+    </CardContent></Card>
+
+    <Card><CardHeader><CardTitle>{t("set.install")}</CardTitle><CardDescription>{t("set.installDesc")}</CardDescription></CardHeader><CardContent className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {pwa.installed
+          ? <Badge variant="approved">{t("set.installed")}</Badge>
+          : pwa.canInstall
+            ? <Button variant="outline" onClick={pwa.install}><Download className="h-4 w-4 mr-2" />{t("set.install")}</Button>
+            : <span className="text-sm text-muted-foreground">{t("set.installLater")}</span>}
+      </div>
+      <div className="border-t pt-3">
+        <div className="text-sm font-medium mb-1">{t("set.push")}</div>
+        <p className="text-sm text-muted-foreground mb-2">{t("set.pushDesc")}</p>
+        {!pwa.supported
+          ? <div className="text-sm text-muted-foreground">{t("set.pushUnsupported")}</div>
+          : <Button variant="outline" disabled={pwa.busy} onClick={async () => {
+              const turningOff = pwa.subscribed;
+              const ok = turningOff ? await pwa.unsubscribe() : await pwa.subscribe();
+              if (ok) toast({ title: turningOff ? t("set.pushOff") : t("set.pushOn") });
+              else toast({ title: t("set.pushUnsupported"), variant: "destructive" });
+            }}>{pwa.subscribed ? t("set.disable") : t("set.enable")}</Button>}
+      </div>
     </CardContent></Card>
 
     <Button variant="destructive" onClick={()=>supabase.auth.signOut()}>{t("set.signOut")}</Button>

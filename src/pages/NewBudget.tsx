@@ -25,6 +25,13 @@ export default function NewBudget() {
   const qc = useQueryClient();
   const [form, setForm] = React.useState({ name: "", total_amount: "", currency: "IDR", period_start: "", period_end: "" });
   const [fieldErrs, setFieldErrs] = React.useState<Record<string, string[]>>({});
+  const [customTpls, setCustomTpls] = React.useState<{ name: string; total_amount: string; currency: string }[]>(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem("budgetapp-templates") ?? "[]");
+    } catch {
+      return [];
+    }
+  });
 
   const schema = React.useMemo(
     () => getBudgetSchema({ nameRequired: t("v.nameRequired"), invalidAmount: t("v.invalidAmount"), endGteStart: t("v.endGteStart") }),
@@ -61,6 +68,34 @@ export default function NewBudget() {
     }
     setFieldErrs({});
     mut.mutate();
+  };
+
+  const builtins = [
+    { name: t("budgets.tplHouse"), total_amount: "5000000", currency: "IDR", months: 1 },
+    { name: t("budgets.tplTrip"), total_amount: "2000000", currency: "IDR", months: 0 },
+    { name: t("budgets.tplEvent"), total_amount: "10000000", currency: "IDR", months: 0 },
+  ];
+  const applyTpl = (tpl: { name: string; total_amount: string; currency: string; months: number }) => {
+    const next = { ...form, name: tpl.name, total_amount: tpl.total_amount, currency: tpl.currency };
+    if (tpl.months === 1) {
+      const now = new Date();
+      next.period_start = iso(new Date(now.getFullYear(), now.getMonth(), 1));
+      next.period_end = iso(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    }
+    setForm(next);
+    setFieldErrs({});
+  };
+  const saveTpl = () => {
+    if (!form.name.trim() || !isValidMoney(form.total_amount)) return;
+    const tpl = { name: form.name.trim(), total_amount: form.total_amount.trim(), currency: form.currency };
+    const next = [tpl, ...customTpls.filter((c) => c.name !== tpl.name)].slice(0, 10);
+    setCustomTpls(next);
+    try {
+      window.localStorage.setItem("budgetapp-templates", JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+    toast({ title: t("budgets.templateSaved") });
   };
 
   const setPreset = (which: "month" | "next" | "quarter") => {
@@ -102,6 +137,29 @@ export default function NewBudget() {
           <p className="text-sm text-white/85 mt-1">{t("budgets.dialogSub")}</p>
         </div>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">{t("budgets.templates")}</CardTitle><CardDescription>{t("budgets.tplSub")}</CardDescription></CardHeader>
+        <CardContent>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {builtins.map((b) => (
+              <button key={b.name} type="button" onClick={() => applyTpl(b)}
+                className="shrink-0 rounded-xl border border-input px-4 py-2.5 text-left text-sm hover:border-primary hover:bg-primary/5 transition-colors">
+                <div className="font-semibold">{b.name}</div>
+                <div className="text-xs text-muted-foreground tabular">{formatMoney(Number(b.total_amount), b.currency)}</div>
+              </button>
+            ))}
+            {customTpls.map((b) => (
+              <button key={b.name} type="button" onClick={() => applyTpl({ ...b, months: 0 })}
+                className="shrink-0 rounded-xl border border-dashed border-primary/40 px-4 py-2.5 text-left text-sm hover:bg-primary/5 transition-colors">
+                <div className="font-semibold">{b.name}</div>
+                <div className="text-xs text-muted-foreground tabular">{formatMoney(Number(b.total_amount), b.currency)}</div>
+              </button>
+            ))}
+          </div>
+          {customTpls.length > 0 && <div className="mt-2 text-xs text-muted-foreground">{t("budgets.customTemplates")}: {customTpls.length}</div>}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px] items-start">
         <div className="space-y-6">
@@ -173,6 +231,7 @@ export default function NewBudget() {
               <Button onClick={onCreate} disabled={mut.isPending} className="w-full h-11 text-base mt-2">
                 {mut.isPending ? t("budgets.creating") : <><Check className="h-4 w-4 mr-2" />{t("budgets.create")}</>}
               </Button>
+              <Button variant="ghost" size="sm" onClick={saveTpl} className="w-full">{t("budgets.saveTemplate")}</Button>
               <CardDescription className="text-xs text-center">{t("budgets.dialogSub")}</CardDescription>
             </CardContent>
           </Card>

@@ -114,6 +114,46 @@ export default function NewRequest(){
   const previewUrl = React.useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
   React.useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
+  const merchantNames = React.useMemo(
+    () => [...new Set((history ?? []).map((h) => h.merchant).filter((m): m is string => !!m && m.trim().length > 0))].slice(0, 20),
+    [history]
+  );
+
+  const { data: recentReceipts } = useQuery({
+    queryKey: ["my-receipts"],
+    queryFn: async () => {
+      if (!profile) return [];
+      const { data, error } = await supabase
+        .from("reimbursement_requests")
+        .select("id,merchant,receipt_url")
+        .eq("requester_id", profile.id)
+        .not("receipt_url", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(6);
+      if (error) throw error;
+      const out: { id: string; merchant: string | null; url: string }[] = [];
+      for (const r of (data ?? []) as { id: string; merchant: string | null; receipt_url: string }[]) {
+        const { data: s } = await supabase.storage.from("receipts").createSignedUrl(r.receipt_url, 300);
+        if (s?.signedUrl) out.push({ id: r.id, merchant: r.merchant, url: s.signedUrl });
+      }
+      return out;
+    },
+    enabled: !!profile,
+  });
+
+  const reuseReceipt = async (url: string, merchant: string | null) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const ext = (blob.type.split("/")[1] || "jpg").split("+")[0];
+      onFile(new File([blob], `receipt-${Date.now()}.${ext}`, { type: blob.type }));
+      if (merchant && !form.merchant.trim()) setForm((f) => ({ ...f, merchant }));
+      toast({ title: t("new.reused") });
+    } catch {
+      toast({ title: t("new.failed"), variant: "destructive" });
+    }
+  };
+
   const onFile = (f: File | null) => {
     setErr(null);
     if (!f) { setFile(null); return; }
@@ -254,7 +294,8 @@ export default function NewRequest(){
               {proposalErr && <div className="text-sm text-destructive">{proposalErr}</div>}
             </div>
           )}
-          <div><Label>{t("new.merchant")}</Label><Input value={form.merchant} onChange={e=>setForm({...form,merchant:e.target.value})} placeholder={t("new.merchantPh")} maxLength={200} /></div>
+          <div><Label>{t("new.merchant")}</Label><Input value={form.merchant} onChange={e=>setForm({...form,merchant:e.target.value})} placeholder={t("new.merchantPh")} maxLength={200} list="merchant-history" />
+            <datalist id="merchant-history">{merchantNames.map((m) => <option key={m} value={m} />)}</datalist></div>
           <div>
             <Label>{t("new.description")}</Label>
             <Textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder={t("new.descPh")} maxLength={1000} />
@@ -286,9 +327,22 @@ export default function NewRequest(){
             {form.description && <div className="flex justify-between gap-3 p-3"><dt className="text-muted-foreground">{t("new.description")}</dt><dd className="text-right max-w-[60%]">{form.description}</dd></div>}
             <div className="flex justify-between gap-3 p-3"><dt className="text-muted-foreground">{t("new.dueDate")}</dt><dd className="font-medium">{form.due_date ? formatDate(form.due_date, lang) : "—"}</dd></div>
           </dl>
-          <div>
+          <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); onFile(e.dataTransfer.files?.[0] ?? null); }}>
             <Label>{t("new.receipt")}</Label>
+            {recentReceipts && recentReceipts.length > 0 && (
+              <div className="mt-1.5 mb-2">
+                <div className="text-xs text-muted-foreground mb-1.5">{t("new.recentReceipts")} — {t("new.tapReuse")}</div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {recentReceipts.map((r) => (
+                    <button key={r.id} type="button" onClick={() => reuseReceipt(r.url, r.merchant)} title={t("new.tapReuse")} className="shrink-0 rounded-lg border overflow-hidden hover:border-primary transition-colors">
+                      <img src={r.url} alt="" className="h-16 w-16 object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <Input type="file" accept="image/*,application/pdf" onChange={e=>onFile(e.target.files?.[0]??null)} />
+            <p className="mt-1 text-xs text-muted-foreground">{t("new.drop")}</p>
             {file && previewUrl && (
               <div className="mt-2 flex items-start gap-3 rounded-md border p-2">
                 {file.type.startsWith("image/") && <img src={previewUrl} alt={t("new.receiptPreview")} className="h-20 w-20 rounded object-cover border" />}

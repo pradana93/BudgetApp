@@ -1,12 +1,14 @@
 import * as React from "react";
-import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
+import { useSession } from "@/hooks/useSession";
+import { useToast } from "@/components/ui/toast";
 import { analyzeBudget, budgetHealth, cumulativeSpendSeries } from "@/lib/insights";
 import { dateLocale, formatDate, formatDateTime } from "@/lib/datetime";
 import { useLang } from "@/i18n/LanguageContext";
@@ -15,6 +17,11 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 export default function BudgetDetail(){
   const { id } = useParams();
   const { t, lang } = useLang();
+  const { profile } = useSession();
+  const { toast } = useToast();
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const isOwner = profile?.role === "owner";
   const { data: budget } = useQuery({ queryKey:["budgets",id], queryFn: async()=>{
     const { data, error } = await supabase.from("budgets").select("*").eq("id",id!).single(); if(error) throw error; return data;
   }});
@@ -29,8 +36,7 @@ export default function BudgetDetail(){
     () => analyzeBudget(ledger ?? [], requests ?? [], budget?.available_amount ?? 0, budget?.currency ?? "IDR", new Date(), lang),
     [ledger, requests, budget, lang]
   );
-  const series = React.useMemo(() => cumulativeSpendSeries(ledger ?? [], dateLocale(lang)), [ledger, lang]);
-  const health = budgetHealth({
+  const series = React.useMemo(() => cumulativeSpendSeries(ledger ?? [], dateLocale(lang)), [ledger, lang]);  const health = budgetHealth({
     allocated: budget?.allocated_amount ?? 0,
     total: budget?.total_amount ?? 0,
     available: budget?.available_amount ?? 0,
@@ -40,8 +46,44 @@ export default function BudgetDetail(){
   const healthVariant = health === "over" ? "destructive" : health === "atRisk" ? "pending" : "approved";
   const healthLabel = health === "over" ? t("health.over") : health === "atRisk" ? t("health.atRisk") : t("health.onTrack");
 
-  const exportCsv = ()=>{
-    if(!ledger) return;
+  const clone = useMutation({
+    mutationFn: async () => {
+      if (!budget || !profile) throw new Error("not ready");
+      const isoLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      let start: string | null = null;
+      let end: string | null = null;
+      if (budget.period_start && budget.period_end) {
+        const s = new Date(budget.period_start);
+        const e = new Date(budget.period_end);
+        const span = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1;
+        const ns = new Date(s);
+        ns.setMonth(ns.getMonth() + span);
+        const ne = new Date(e);
+        ne.setMonth(ne.getMonth() + span);
+        start = isoLocal(ns);
+        end = isoLocal(ne);
+      }
+      const { data, error } = await supabase.from("budgets").insert({
+        name: `${budget.name} +1`,
+        total_amount: Number(budget.total_amount),
+        currency: budget.currency,
+        period_start: start,
+        period_end: end,
+        status: "active",
+        owner_id: profile.id,
+      }).select("id").single();
+      if (error) throw error;
+      return (data as { id: string }).id;
+    },
+    onSuccess: (newId) => {
+      qc.invalidateQueries({ queryKey: ["budgets"] });
+      toast({ title: t("bd.cloned") });
+      nav(`/budgets/${newId}`);
+    },
+    onError: (e: Error) => toast({ title: t("bd.cloneFailed"), description: e.message, variant: "destructive" }),
+  });
+
+  const exportCsv = ()=>{    if(!ledger) return;
     const rows = [["date","type","debit","credit","description"], ...ledger.map(l=>[l.created_at, l.reference_type, String(l.debit), String(l.credit), (l.description??"").replace(/,/g," ")])];
     const csv = rows.map(r=>r.join(",")).join("\n");
     const blob = new Blob([csv],{type:"text/csv"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`reconciliation-${id}.csv`; a.click(); URL.revokeObjectURL(url);
@@ -49,7 +91,7 @@ export default function BudgetDetail(){
 
   if(!budget) return <div className="p-4 text-sm text-muted-foreground">{t("common.loading")}</div>;
   return <div className="space-y-6">
-    <div className="flex flex-wrap justify-between gap-2"><div><h1 className="text-2xl font-bold">{budget.name} <Badge variant={healthVariant} className="ml-1 align-middle">{healthLabel}</Badge></h1><p className="text-sm text-muted-foreground">{formatMoney(Number(budget.total_amount),budget.currency)} total • {formatMoney(Number(budget.allocated_amount),budget.currency)} allocated • {formatMoney(Number(budget.available_amount),budget.currency)} available</p></div><Button variant="outline" onClick={exportCsv}>{t("bd.export")}</Button></div>
+    <div className="flex flex-wrap justify-between gap-2"><div><h1 className="text-2xl font-bold">{budget.name} <Badge variant={healthVariant} className="ml-1 align-middle">{healthLabel}</Badge></h1><p className="text-sm text-muted-foreground">{formatMoney(Number(budget.total_amount),budget.currency)} total • {formatMoney(Number(budget.allocated_amount),budget.currency)} allocated • {formatMoney(Number(budget.available_amount),budget.currency)} available</p></div><div className="flex gap-2 shrink-0"><Button variant="outline" onClick={exportCsv}>{t("bd.export")}</Button>{isOwner && <Button variant="outline" onClick={()=>clone.mutate()} disabled={clone.isPending}>{clone.isPending ? t("common.loading") : t("bd.clone")}</Button>}</div></div>
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2">{t("bd.aiTitle")} <Badge variant="secondary">{t("bd.movements", { n: insights.movementCount })}</Badge></CardTitle></CardHeader>
       <CardContent className="space-y-4">

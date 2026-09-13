@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 import {
   LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell,
-  Plus, LogOut, Languages, Trophy, type LucideIcon,
+  Plus, LogOut, Languages, Trophy, History, CalendarDays, type LucideIcon,
 } from "lucide-react";
 import type { StringKey } from "@/i18n/translations";
 
@@ -28,6 +28,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const { t, lang, setLang } = useLang();
   const [q, setQ] = React.useState("");
   const [active, setActive] = React.useState(0);
+  const [recents, setRecents] = React.useState<{ to: string; label: string }[]>([]);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const { data: budgets } = useQuery({
@@ -53,6 +54,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     if (open) {
       setQ("");
       setActive(0);
+      try {
+        setRecents(JSON.parse(window.localStorage.getItem("budgetapp-recent") ?? "[]"));
+      } catch {
+        setRecents([]);
+      }
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [open ]);
@@ -62,13 +68,33 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     nav(to);
   };
 
+  const saveRecent = (to: string, label: string) => {
+    try {
+      const prev = JSON.parse(window.localStorage.getItem("budgetapp-recent") ?? "[]") as { to: string; label: string }[];
+      window.localStorage.setItem("budgetapp-recent", JSON.stringify([{ to, label }, ...prev.filter((r) => r.to !== to)].slice(0, 5)));
+    } catch {
+      /* ignore */
+    }
+  };
+
   const needle = q.trim().toLowerCase();
-  const match = (s: string) => !needle || s.toLowerCase().includes(needle);
+  const fuzzy = (s: string) => {
+    const l = s.toLowerCase();
+    let j = 0;
+    for (const c of needle) {
+      j = l.indexOf(c, j);
+      if (j < 0) return false;
+      j++;
+    }
+    return true;
+  };
+  const match = (s: string) => !needle || s.toLowerCase().includes(needle) || fuzzy(s);
 
   const pages: Item[] = [
     { id: "p-dash", group: "cmd.pages", label: t("nav.dashboard"), icon: LayoutDashboard, run: () => go("/") },
     { id: "p-budgets", group: "cmd.pages", label: t("nav.budgets"), icon: Wallet, run: () => go("/budgets") },
     { id: "p-requests", group: "cmd.pages", label: t("nav.requests"), icon: Receipt, run: () => go("/requests") },
+    { id: "p-calendar", group: "cmd.pages", label: t("nav.calendar"), icon: CalendarDays, run: () => go("/calendar") },
     ...(profile?.role === "owner"
       ? [{ id: "p-admin", group: "cmd.pages" as StringKey, label: t("nav.admin"), icon: ShieldCheck, run: () => go("/admin") }]
       : []),
@@ -80,11 +106,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const records: Item[] = [
     ...(budgets ?? []).map((b) => ({
       id: `b-${b.id}`, group: "cmd.records" as StringKey, label: b.name,
-      hint: formatMoney(Number(b.total_amount), b.currency), icon: Wallet, run: () => go(`/budgets/${b.id}`),
+      hint: formatMoney(Number(b.total_amount), b.currency), icon: Wallet,
+      run: () => { saveRecent(`/budgets/${b.id}`, b.name); go(`/budgets/${b.id}`); },
     })),
     ...(requests ?? []).map((r) => ({
       id: `r-${r.id}`, group: "cmd.records" as StringKey, label: r.merchant ?? r.category,
-      hint: `${formatMoney(Number(r.amount))} • ${r.status}`, icon: Receipt, run: () => go(`/requests/${r.id}`),
+      hint: `${formatMoney(Number(r.amount))} • ${r.status}`, icon: Receipt,
+      run: () => { saveRecent(`/requests/${r.id}`, r.merchant ?? r.category); go(`/requests/${r.id}`); },
     })),
   ];
 
@@ -101,8 +129,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     },
   ];
 
-  const items = [...pages, ...records, ...actions].filter((i) => match(i.label) || (i.hint ? match(i.hint) : false));
+  const recentItems: Item[] = !needle
+    ? recents.map((r, i) => ({ id: `recent-${i}`, group: "cmd.recent" as StringKey, label: r.label, icon: History, run: () => go(r.to) }))
+    : [];
+
+  const items = [...recentItems, ...pages, ...records, ...actions].filter((i) => match(i.label) || (i.hint ? match(i.hint) : false));
   const safeActive = items.length === 0 ? 0 : Math.min(active, items.length - 1);
+  const counts = new Map<StringKey, number>();
+  for (const i of items) counts.set(i.group, (counts.get(i.group) ?? 0) + 1);
 
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
@@ -140,7 +174,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             lastGroup = item.group;
             return (
               <React.Fragment key={item.id}>
-                {header && <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t(header)}</div>}
+                {header && <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t(header)} ({counts.get(header) ?? 0})</div>}
                 <button
                   onClick={() => item.run()}
                   onMouseEnter={() => setActive(idx)}
