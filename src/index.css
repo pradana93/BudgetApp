@@ -63,6 +63,15 @@ body {
 
 html {
   scroll-behavior: smooth;
+  /* Never allow sideways page panning: wide tables already scroll inside
+     their own containers. `clip` (unlike `hidden`) doesn't break sticky. */
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+
+body {
+  overflow-x: clip;
+  overscroll-behavior-x: none;
 }
 
 ::selection {
