@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/hooks/useSession";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,24 +10,32 @@ import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
 import { usePwa } from "@/hooks/usePwa";
 import { Download } from "lucide-react";
-import { AVATAR_THEMES, initialsOf, setAvatarTheme, useAvatarTheme } from "@/lib/avatar";
+import { AVATAR_THEMES, initialsOf, setAvatarTheme, useAvatarTheme, isAcceptedAvatar, prepareAvatar, avatarPublicUrl } from "@/lib/avatar";
 import { xpOf, levelOf, type ReqLite } from "@/lib/gamify";
 import { formatDate } from "@/lib/datetime";
 import { Check, Trophy } from "lucide-react";
 
 export default function Settings(){
-  const { profile, session } = useSession();
+  const { profile, session, refresh } = useSession();
   const { toast } = useToast();
   const { t, lang } = useLang();
   const pwa = usePwa();
+  const qc = useQueryClient();
   const [displayName, setDisplayName] = React.useState(profile?.display_name ?? "");
   const [savingName, setSavingName] = React.useState(false);
   const [newPassword, setNewPassword] = React.useState("");
   const [savingPw, setSavingPw] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
+  const [uploading, setUploading] = React.useState(false);
+  const [imgFailed, setImgFailed] = React.useState(false);
+  const [photoVer, setPhotoVer] = React.useState(0);
+  const fileRef = React.useRef<HTMLInputElement>(null);
 
   const avatarCls = useAvatarTheme(profile?.id);
   const name = profile?.display_name || profile?.email || session?.user.email || t("nav.userFallback");
+  const photoSrc = profile?.avatar_url && !imgFailed
+    ? `${profile.avatar_url}?v=${photoVer}`
+    : null;
 
   React.useEffect(() => { setDisplayName(profile?.display_name ?? ""); }, [profile?.display_name]);
 
@@ -73,7 +81,49 @@ export default function Settings(){
     const { error } = await supabase.from("profiles").update({ display_name: trimmed }).eq("id", profile.id);
     setSavingName(false);
     if (error) toast({ title: t("set.saveFailed"), description: error.message, variant: "destructive" });
-    else toast({ title: t("set.updated") });
+    else { toast({ title: t("set.updated") }); refresh(); qc.invalidateQueries({ queryKey: ["profile-avatar", profile.id] }); }
+  };
+
+  const onPickFile = async (f: File | null) => {
+    if (!f || !profile) return;
+    if (!isAcceptedAvatar(f)) { toast({ title: t("profile.badType"), variant: "destructive" }); return; }
+    setUploading(true);
+    try {
+      const blob = await prepareAvatar(f);
+      const path = `${profile.id}/avatar.jpg`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      if (upErr) throw upErr;
+      const { error: dbErr } = await supabase.from("profiles").update({ avatar_url: avatarPublicUrl(profile.id) }).eq("id", profile.id);
+      if (dbErr) throw dbErr;
+      setImgFailed(false);
+      setPhotoVer((v) => v + 1);
+      refresh();
+      qc.invalidateQueries({ queryKey: ["profile-avatar", profile.id] });
+      qc.invalidateQueries({ queryKey: ["budgets"] });
+      toast({ title: t("profile.uploaded") });
+    } catch (e) {
+      toast({ title: t("profile.uploadFailed"), description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const removePhoto = async () => {
+    if (!profile) return;
+    setUploading(true);
+    try {
+      await supabase.storage.from("avatars").remove([`${profile.id}/avatar.jpg`]);
+      const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", profile.id);
+      if (error) throw error;
+      refresh();
+      qc.invalidateQueries({ queryKey: ["profile-avatar", profile.id] });
+      toast({ title: t("profile.removed") });
+    } catch (e) {
+      toast({ title: t("profile.uploadFailed"), description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const savePassword = async (e: React.FormEvent) => {
@@ -121,9 +171,33 @@ export default function Settings(){
   return <div className="space-y-6 max-w-2xl">
     <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white p-6 flex flex-wrap items-center gap-4 shadow-lg overflow-hidden relative">
       <div aria-hidden className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
-      <span className={`relative flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br ${avatarCls} text-2xl font-bold text-white ring-4 ring-white/30 shadow-xl`}>
-        {initialsOf(name)}
-      </span>
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          aria-label={photoSrc ? t("profile.change") : t("profile.upload")}
+          className={`group relative block h-20 w-20 overflow-hidden rounded-3xl ring-4 ring-white/30 shadow-xl transition-transform hover:scale-[1.03] active:scale-95 ${photoSrc ? "" : `bg-gradient-to-br ${avatarCls}`}`}
+        >
+          {photoSrc
+            ? <img src={photoSrc} alt={name} onError={() => setImgFailed(true)} className="h-full w-full object-cover" />
+            : <span className="flex h-full w-full items-center justify-center text-2xl font-bold">{initialsOf(name)}</span>}
+          <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-[11px] font-semibold opacity-0 transition-opacity group-hover:opacity-100">
+            {uploading ? t("common.loading") : photoSrc ? t("profile.change") : t("profile.upload")}
+          </span>
+        </button>
+        {photoSrc && !uploading && (
+          <button
+            type="button"
+            onClick={removePhoto}
+            aria-label={t("profile.remove")}
+            className="absolute -bottom-1 -right-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-2 py-0.5 shadow-md hover:opacity-90"
+          >
+            {t("profile.remove")}
+          </button>
+        )}
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => onPickFile(e.target.files?.[0] ?? null)} />
+      </div>
       <div className="relative min-w-0 flex-1">
         <h1 className="text-2xl font-bold tracking-tight truncate">{name}</h1>
         <p className="text-sm text-white/80 truncate">{profile?.email ?? session?.user.email}</p>
@@ -157,6 +231,15 @@ export default function Settings(){
           );
         })}
       </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+          {uploading ? t("common.loading") : photoSrc ? t("profile.change") : t("profile.upload")}
+        </Button>
+        {photoSrc && (
+          <Button type="button" variant="ghost" size="sm" onClick={removePhoto} disabled={uploading}>{t("profile.remove")}</Button>
+        )}
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">{t("profile.photoDesc")}</p>
     </CardContent></Card>
 
     <Card><CardHeader><CardTitle>{t("profile.editTitle")}</CardTitle><CardDescription>{t("set.nameDesc")}</CardDescription></CardHeader><CardContent>

@@ -80,3 +80,40 @@ export function initialsOf(name: string): string {
       .join("") || "?"
   );
 }
+
+const AVATAR_EDGE = 256;
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/** True when the file is an allowed avatar image. */
+export function isAcceptedAvatar(file: File): boolean {
+  return ACCEPTED_TYPES.includes(file.type);
+}
+
+/**
+ * Center-crop to square and resize to 256px JPEG via canvas.
+ * Falls back to the original file if canvas decoding fails.
+ */
+export async function prepareAvatar(file: File): Promise<Blob> {
+  if (typeof document === "undefined") return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const size = Math.min(bitmap.width, bitmap.height);
+    const sx = (bitmap.width - size) / 2;
+    const sy = (bitmap.height - size) / 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = AVATAR_EDGE;
+    canvas.height = AVATAR_EDGE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, sx, sy, size, size, 0, 0, AVATAR_EDGE, AVATAR_EDGE);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+    return blob ?? file;
+  } catch {
+    return file;
+  }
+}
+
+export function avatarPublicUrl(userId: string): string {
+  const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
+  return `${url}/storage/v1/object/public/avatars/${userId}/avatar.jpg`;
+}

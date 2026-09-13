@@ -4,8 +4,8 @@ export type Database = {
   public: {
     Tables: {
       profiles: {
-        Row: { id: string; email: string; display_name: string | null; role: "owner" | "member"; created_at: string; updated_at: string };
-        Insert: { id: string; email: string; display_name?: string | null; role: "owner" | "member"; created_at?: string; updated_at?: string };
+        Row: { id: string; email: string; display_name: string | null; role: "owner" | "member"; avatar_url: string | null; created_at: string; updated_at: string };
+        Insert: { id: string; email: string; display_name?: string | null; role: "owner" | "member"; avatar_url?: string | null; created_at?: string; updated_at?: string };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
       };
       budgets: {

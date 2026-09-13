@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, Search, Trophy, CalendarDays, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserAvatar } from "@/components/UserAvatar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { Tour } from "@/components/Tour";
 import { LanguageToggle, useLang } from "@/i18n/LanguageContext";
@@ -131,9 +132,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="p-3 border-t border-border/60">
           <div className="rounded-2xl bg-muted/50 border border-border/60 p-3 flex items-center gap-2.5">
-            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarCls} text-xs font-bold text-white`}>
-              {initialsOf(displayName)}
-            </span>
+            {profile ? (
+              <UserAvatar userId={profile.id} name={displayName} className="h-9 w-9 rounded-full" />
+            ) : (
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarCls} text-xs font-bold text-white`}>{initialsOf(displayName)}</span>
+            )}
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold truncate" title={profile?.email ?? undefined}>{profile?.email ?? profile?.display_name ?? t("nav.userFallback")}</div>
               <div className="text-[11px] text-muted-foreground capitalize">{profile?.role}</div>
@@ -156,9 +159,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Button>
             <ThemeToggle />
             <LanguageToggle />
-            <span title={profile?.email ?? undefined} className={`ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${avatarCls} text-[11px] font-bold text-white`}>
-              {initialsOf(displayName)}
-            </span>
+            {profile
+              ? <UserAvatar userId={profile.id} name={displayName} className="ml-1 h-8 w-8 text-[11px]" />
+              : <span title={profile?.email ?? undefined} className={`ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${avatarCls} text-[11px] font-bold text-white`}>{initialsOf(displayName)}</span>}
           </div>
         </header>
         <header className="md:hidden sticky top-0 z-30 border-b border-border/60 bg-card/95 backdrop-blur p-3 flex items-center justify-between">

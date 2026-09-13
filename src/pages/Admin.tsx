@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { UserAvatar } from "@/components/UserAvatar";
 import { formatMoney } from "@/lib/money";
 import { formatDate, formatDateTime } from "@/lib/datetime";
 import { reconciliationScore } from "@/lib/matcher";
@@ -348,7 +349,7 @@ export default function Admin() {
         <Card><CardHeader><CardTitle>{t("admin.users")}</CardTitle></CardHeader><CardContent>
           <Table><TableHeader><TableRow><TableHead>{t("admin.email")}</TableHead><TableHead>{t("admin.name")}</TableHead><TableHead>{t("admin.role")}</TableHead></TableRow></TableHeader>
           <TableBody>{users?.map((u) => (
-            <TableRow key={u.id}><TableCell>{u.email}</TableCell><TableCell>{u.display_name ?? "—"}</TableCell>
+            <TableRow key={u.id}><TableCell className="whitespace-nowrap"><span className="flex items-center gap-2"><UserAvatar userId={u.id} name={u.display_name ?? u.email} className="h-7 w-7 text-[10px]" />{u.email}</span></TableCell><TableCell>{u.display_name ?? "—"}</TableCell>
             <TableCell><Badge variant={u.role === "owner" ? "default" : "secondary"} className="capitalize">{u.role}</Badge></TableCell></TableRow>))}
           </TableBody></Table>
         </CardContent></Card>
