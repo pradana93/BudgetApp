@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
 import { formatDateTime } from "@/lib/datetime";
+import { Bell } from "lucide-react";
 
 type Notification = { id: string; type: string; title: string; body: string | null; link: string | null; is_read: boolean; created_at: string };
 
@@ -77,7 +78,7 @@ export default function Notifications() {
       </div>
       <Card><CardHeader><CardTitle>{t("notif.recent")}</CardTitle></CardHeader><CardContent className="space-y-2">
         {isLoading && <div className="text-sm text-muted-foreground">{t("common.loading")}</div>}
-        {(data?.length ?? 0) === 0 && !isLoading && <div className="text-sm text-muted-foreground">{t("notif.empty")}</div>}
+        {(data?.length ?? 0) === 0 && !isLoading && <div className="flex flex-col items-center gap-2 py-8 text-center"><span className="rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 p-3 text-white shadow-lg"><Bell className="h-6 w-6" /></span><div className="text-sm text-muted-foreground">{t("notif.empty")}</div></div>}
         {data?.map((n) => (
           <Link key={n.id} to={n.link ?? "/"} onClick={() => { if (!n.is_read) markOne.mutate(n.id); }} className={`flex justify-between gap-3 border-b py-2 text-sm rounded px-2 ${n.is_read ? "opacity-70" : "bg-muted/40"}`}>
             <span><span className="font-medium">{n.title}</span><span className="text-muted-foreground"> — {n.body}</span></span>

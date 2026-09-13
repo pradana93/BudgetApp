@@ -5,8 +5,9 @@ import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, Search, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { CommandPalette } from "@/components/CommandPalette";
 import { LanguageToggle, useLang } from "@/i18n/LanguageContext";
 import type { StringKey } from "@/i18n/translations";
 
@@ -28,6 +29,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
   const navgt = useNavigate();
   const qc = useQueryClient();
+  const [paletteOpen, setPaletteOpen] = React.useState(false);
+  React.useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
   const { data: unread } = useQuery({
     queryKey: ["notifications-unread"],
     queryFn: async () => {
@@ -68,6 +80,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {profile && <Badge variant={profile.role === "owner" ? "default" : "secondary"} className="mt-2 capitalize">{profile.role}</Badge>}
         </div>
         <nav className="flex-1 p-3 space-y-1">
+          <button onClick={() => setPaletteOpen(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+            <Search className="h-4 w-4" /> {t("cmd.search")}
+            <kbd className="ml-auto rounded border border-input px-1.5 text-[10px] font-sans">⌘K</kbd>
+          </button>
           {items.map((n) => {
             const active = loc.pathname === n.to || (n.to !== "/" && loc.pathname.startsWith(n.to));
             return (
@@ -78,8 +94,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="p-4 border-t space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-medium truncate">{profile?.email ?? profile?.display_name ?? t("nav.userFallback")}</div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
+              {(() => {
+                const name = profile?.display_name || profile?.email || "?";
+                return name.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map((w) => (w[0] ?? "").toUpperCase()).join("") || "?";
+              })()}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium truncate">{profile?.email ?? profile?.display_name ?? t("nav.userFallback")}</div>
+              <div className="text-xs text-muted-foreground capitalize">{profile?.role}</div>
+            </div>
             <span className="flex items-center gap-1">
               <Button variant="ghost" size="sm" aria-label={t("nav.notifications")} onClick={() => navgt("/notifications")} className="relative">
                 <Bell className="h-4 w-4" />
@@ -125,6 +150,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             })}
           </div>
         </nav>
+        <button onClick={() => setPaletteOpen(true)} aria-label={t("cmd.search")} className="md:hidden fixed bottom-24 right-4 z-40 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 p-3.5 text-white shadow-xl active:scale-95 transition-transform">
+          <Search className="h-5 w-5" />
+        </button>
+        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ export default function Settings(){
   const [savingName, setSavingName] = React.useState(false);
   const [newPassword, setNewPassword] = React.useState("");
   const [savingPw, setSavingPw] = React.useState(false);
+  const [exporting, setExporting] = React.useState(false);
 
   React.useEffect(() => { setDisplayName(profile?.display_name ?? ""); }, [profile?.display_name]);
 
@@ -46,6 +47,35 @@ export default function Settings(){
     else { setNewPassword(""); toast({ title: t("set.pwUpdated") }); }
   };
 
+  const exportData = async () => {
+    setExporting(true);
+    try {
+      const [b, r, l, c] = await Promise.all([
+        supabase.from("budgets").select("*"),
+        supabase.from("reimbursement_requests").select("*"),
+        supabase.from("ledger_entries").select("*").order("created_at", { ascending: true }).limit(1000),
+        supabase.from("categories").select("*"),
+      ]);
+      const err = b.error ?? r.error ?? l.error ?? c.error;
+      if (err) throw err;
+      const blob = new Blob(
+        [JSON.stringify({ exported_at: new Date().toISOString(), budgets: b.data, requests: r.data, ledger: l.data, categories: c.data }, null, 2)],
+        { type: "application/json" }
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `budgetapp-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: t("set.exported") });
+    } catch (e) {
+      toast({ title: t("set.exportFailed"), description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return <div className="space-y-6 max-w-xl">
     <h1 className="text-2xl font-bold">{t("set.title")}</h1>
     <Card><CardHeader><CardTitle>{t("set.profile")}</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">
@@ -67,6 +97,9 @@ export default function Settings(){
     </CardContent></Card>
     <Card><CardHeader><CardTitle>{t("set.storage")}</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">
       {t("set.storageA")} <code>receipts</code> {t("set.storageB")} <code>{"{user_id}/{request_id}/{filename}"}</code>.
+    </CardContent></Card>
+    <Card><CardHeader><CardTitle>{t("set.export")}</CardTitle><CardDescription>{t("set.exportDesc")}</CardDescription></CardHeader><CardContent>
+      <Button variant="outline" onClick={exportData} disabled={exporting}>{exporting ? t("common.loading") : t("set.export")}</Button>
     </CardContent></Card>
     <Button variant="destructive" onClick={()=>supabase.auth.signOut()}>{t("set.signOut")}</Button>
   </div>;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { analyzeBudget, cumulativeSpendSeries } from "./insights";
+import { analyzeBudget, budgetHealth, cumulativeSpendSeries } from "./insights";
 
 const NOW = new Date("2026-09-12T12:00:00Z");
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86_400_000).toISOString();
@@ -87,6 +87,13 @@ describe("analyzeBudget", () => {
       { created_at: daysAgo(3), debit: 200, credit: 0, reference_type: "reimbursement", description: null },
     ]);
     expect(series.map((p) => p.cumulative)).toEqual([-1000, -800, -700]);
+  });
+
+  it("grades budget health from exposure, usage and runway", () => {
+    expect(budgetHealth({ allocated: 100, total: 1000, available: 900, pendingExposure: 950, runwayDays: 60 })).toBe("over");
+    expect(budgetHealth({ allocated: 900, total: 1000, available: 100, pendingExposure: 0, runwayDays: 60 })).toBe("atRisk");
+    expect(budgetHealth({ allocated: 900, total: 1000, available: 100, pendingExposure: 0, runwayDays: 5 })).toBe("atRisk");
+    expect(budgetHealth({ allocated: 200, total: 1000, available: 800, pendingExposure: 0, runwayDays: null })).toBe("onTrack");
   });
 
   it("narrates in Bahasa Indonesia when lang is id", () => {

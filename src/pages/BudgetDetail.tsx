@@ -7,7 +7,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
-import { analyzeBudget, cumulativeSpendSeries } from "@/lib/insights";
+import { analyzeBudget, budgetHealth, cumulativeSpendSeries } from "@/lib/insights";
 import { dateLocale, formatDate, formatDateTime } from "@/lib/datetime";
 import { useLang } from "@/i18n/LanguageContext";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -30,6 +30,15 @@ export default function BudgetDetail(){
     [ledger, requests, budget, lang]
   );
   const series = React.useMemo(() => cumulativeSpendSeries(ledger ?? [], dateLocale(lang)), [ledger, lang]);
+  const health = budgetHealth({
+    allocated: budget?.allocated_amount ?? 0,
+    total: budget?.total_amount ?? 0,
+    available: budget?.available_amount ?? 0,
+    pendingExposure: insights.pendingExposure,
+    runwayDays: insights.runwayDays,
+  });
+  const healthVariant = health === "over" ? "destructive" : health === "atRisk" ? "pending" : "approved";
+  const healthLabel = health === "over" ? t("health.over") : health === "atRisk" ? t("health.atRisk") : t("health.onTrack");
 
   const exportCsv = ()=>{
     if(!ledger) return;
@@ -40,7 +49,7 @@ export default function BudgetDetail(){
 
   if(!budget) return <div className="p-4 text-sm text-muted-foreground">{t("common.loading")}</div>;
   return <div className="space-y-6">
-    <div className="flex flex-wrap justify-between gap-2"><div><h1 className="text-2xl font-bold">{budget.name}</h1><p className="text-sm text-muted-foreground">{formatMoney(Number(budget.total_amount),budget.currency)} total • {formatMoney(Number(budget.allocated_amount),budget.currency)} allocated • {formatMoney(Number(budget.available_amount),budget.currency)} available</p></div><Button variant="outline" onClick={exportCsv}>{t("bd.export")}</Button></div>
+    <div className="flex flex-wrap justify-between gap-2"><div><h1 className="text-2xl font-bold">{budget.name} <Badge variant={healthVariant} className="ml-1 align-middle">{healthLabel}</Badge></h1><p className="text-sm text-muted-foreground">{formatMoney(Number(budget.total_amount),budget.currency)} total • {formatMoney(Number(budget.allocated_amount),budget.currency)} allocated • {formatMoney(Number(budget.available_amount),budget.currency)} available</p></div><Button variant="outline" onClick={exportCsv}>{t("bd.export")}</Button></div>
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2">{t("bd.aiTitle")} <Badge variant="secondary">{t("bd.movements", { n: insights.movementCount })}</Badge></CardTitle></CardHeader>
       <CardContent className="space-y-4">

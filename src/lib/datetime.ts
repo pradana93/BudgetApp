@@ -20,3 +20,16 @@ export function isOverdue(dueDate: string | null | undefined, status: string, no
   startOfToday.setHours(0, 0, 0, 0);
   return new Date(dueDate) < startOfToday;
 }
+
+/** Compact relative time in the app language ("just now", "5m ago", …). */
+export function timeAgo(ts: string, lang: Lang, now: Date = new Date()): string {
+  const id = lang === "id";
+  const s = Math.max(0, Math.floor((now.getTime() - new Date(ts).getTime()) / 1000));
+  if (s < 60) return id ? "baru saja" : "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return id ? `${m} mnt lalu` : `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return id ? `${h} jam lalu` : `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return id ? `${d} hari lalu` : `${d}d ago`;
+}

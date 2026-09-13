@@ -349,6 +349,34 @@ const en = {
 
   "eb.title": "Something went wrong",
   "eb.reload": "Reload",
+
+  "cmd.placeholder": "Type a command or search…",
+  "cmd.pages": "Pages",
+  "cmd.records": "Records",
+  "cmd.actions": "Actions",
+  "cmd.newRequest": "New request",
+  "cmd.newBudget": "New budget",
+  "cmd.switchLang": "Switch language (EN/ID)",
+  "cmd.signOut": "Sign out",
+  "cmd.noResults": "No results",
+  "cmd.hint": "↑↓ to navigate • Enter to open • Esc to close",
+  "cmd.search": "Search…",
+
+  "dash.greetMorning": "Good morning",
+  "dash.greetMidday": "Good afternoon",
+  "dash.greetEvening": "Good evening",
+  "dash.greetNight": "Good evening",
+  "dash.activity": "Recent activity",
+  "dash.noActivity": "Nothing yet — activity will appear here.",
+
+  "health.onTrack": "On track",
+  "health.atRisk": "At risk",
+  "health.over": "Over budget",
+
+  "set.export": "Export my data (JSON)",
+  "set.exportDesc": "Download all budgets, requests and ledger entries.",
+  "set.exported": "Data exported",
+  "set.exportFailed": "Export failed",
 };
 
 export type StringKey = keyof typeof en;
@@ -702,6 +730,34 @@ const id: Record<StringKey, string> = {
 
   "eb.title": "Terjadi kesalahan",
   "eb.reload": "Muat ulang",
+
+  "cmd.placeholder": "Ketik perintah atau cari…",
+  "cmd.pages": "Halaman",
+  "cmd.records": "Data",
+  "cmd.actions": "Aksi",
+  "cmd.newRequest": "Permintaan baru",
+  "cmd.newBudget": "Anggaran baru",
+  "cmd.switchLang": "Ganti bahasa (EN/ID)",
+  "cmd.signOut": "Keluar",
+  "cmd.noResults": "Tidak ada hasil",
+  "cmd.hint": "↑↓ navigasi • Enter buka • Esc tutup",
+  "cmd.search": "Cari…",
+
+  "dash.greetMorning": "Selamat pagi",
+  "dash.greetMidday": "Selamat siang",
+  "dash.greetEvening": "Selamat sore",
+  "dash.greetNight": "Selamat malam",
+  "dash.activity": "Aktivitas terbaru",
+  "dash.noActivity": "Belum ada — aktivitas akan muncul di sini.",
+
+  "health.onTrack": "Sehat",
+  "health.atRisk": "Berisiko",
+  "health.over": "Melebihi anggaran",
+
+  "set.export": "Ekspor data saya (JSON)",
+  "set.exportDesc": "Unduh semua anggaran, permintaan, dan entri ledger.",
+  "set.exported": "Data diekspor",
+  "set.exportFailed": "Ekspor gagal",
 };
 
 export const STRINGS: Record<Lang, Record<StringKey, string>> = { en, id };

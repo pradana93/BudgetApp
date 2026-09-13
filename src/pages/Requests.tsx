@@ -13,6 +13,7 @@ import { formatDate, isOverdue } from "@/lib/datetime";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
 import { useCategories } from "@/hooks/useCategories";
+import { Receipt } from "lucide-react";
 
 const STATUSES = ["all", "pending", "approved", "rejected", "reconciled"] as const;
 
@@ -42,6 +43,14 @@ export default function Requests(){
   return <div className="space-y-4">
     <div className="flex flex-wrap justify-between items-center gap-2"><h1 className="text-2xl font-bold">{t("req.title")}</h1><Link to="/requests/new"><Button>{t("req.new")}</Button></Link></div>
     <Card><CardHeader><CardTitle>{t("req.all")}</CardTitle></CardHeader><CardContent>
+      {isLoading ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}</div>
+      : (data?.length ?? 0) === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-10 text-center animate-fade-up">
+          <span className="rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 p-3 text-white shadow-lg"><Receipt className="h-6 w-6" /></span>
+          <div className="font-medium">{t("req.none")}</div>
+          <Link to="/requests/new"><Button>{t("req.new")}</Button></Link>
+        </div>
+      ) : (<>
       <div className="flex flex-wrap gap-2 mb-4">
         <Input placeholder={t("req.searchPh")} value={q} onChange={(e)=>setQ(e.target.value)} className="max-w-xs" />
         <Select value={status} onChange={(e)=>setStatus(e.target.value as typeof status)} aria-label={t("req.status")}>
@@ -55,12 +64,12 @@ export default function Requests(){
           <Button variant="outline" onClick={()=>{ setQ(""); setStatus("all"); setCategory("all"); setVisible(20); }}>{t("req.clear")}</Button>
         )}
       </div>
-      {isLoading ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}</div> :
       <Table className="min-w-[640px]"><TableHeader><TableRow><TableHead>{t("req.merchant")}</TableHead><TableHead>{t("req.category")}</TableHead><TableHead>{t("req.amount")}</TableHead><TableHead>{t("req.status")}</TableHead><TableHead>{t("req.date")}</TableHead><TableHead>{t("req.due")}</TableHead></TableRow></TableHeader>
       <TableBody>{filtered?.slice(0, visible).map(r=> <TableRow key={r.id}><TableCell><Link to={`/requests/${r.id}`} className="text-primary underline">{r.merchant ?? "—"}</Link></TableCell><TableCell>{r.category}</TableCell><TableCell>{formatMoney(Number(r.amount))}</TableCell><TableCell><Badge variant={r.status as never}>{r.status}</Badge></TableCell><TableCell>{formatDate(r.created_at, lang)}</TableCell><TableCell className={isOverdue(r.due_date, r.status) ? "text-destructive font-medium" : undefined}>{r.due_date ? formatDate(r.due_date, lang) : "—"}{isOverdue(r.due_date, r.status) ? ` (${t("req.overdue")})` : ""}</TableCell></TableRow>)}
-      {filtered?.length===0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{(data?.length ?? 0) === 0 ? t("req.none") : t("req.noMatch")}</TableCell></TableRow>}
-      </TableBody></Table>}
+      {filtered?.length===0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{t("req.noMatch")}</TableCell></TableRow>}
+      </TableBody></Table>
       {(filtered?.length ?? 0) > visible && <Button variant="outline" className="mt-3" onClick={()=>setVisible((v)=>v + 20)}>{t("req.showMore", { remaining: (filtered?.length ?? 0) - visible })}</Button>}
+      </>)}
     </CardContent></Card>
   </div>;
 }

@@ -207,3 +207,25 @@ export function cumulativeSpendSeries(
     return { date: new Date(l.created_at).toLocaleDateString(locale), cumulative: acc.toNumber() };
   });
 }
+
+export type Health = "onTrack" | "atRisk" | "over";
+
+/** One-glance budget health from reservations, usage and runway. */
+export function budgetHealth(o: {
+  allocated: number | string;
+  total: number | string;
+  available: number | string;
+  pendingExposure: number | string;
+  runwayDays: number | null;
+}): Health {
+  const available = new Decimal(o.available || 0);
+  const pending = new Decimal(o.pendingExposure || 0);
+  if (pending.greaterThan(0) && pending.greaterThan(available)) return "over";
+  const total = new Decimal(o.total || 0);
+  if (total.greaterThan(0)) {
+    const usage = new Decimal(o.allocated || 0).div(total).mul(100);
+    if (usage.greaterThanOrEqualTo(85)) return "atRisk";
+  }
+  if (o.runwayDays !== null && o.runwayDays <= 7) return "atRisk";
+  return "onTrack";
+}

@@ -10,11 +10,13 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { formatMoney } from "@/lib/money";
+import { budgetHealth } from "@/lib/insights";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
 import { Link } from "react-router-dom";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
+import { Wallet } from "lucide-react";
 import { z } from "zod";
 import { getBudgetSchema } from "@/schemas/budget";
 
@@ -36,6 +38,18 @@ export default function Budgets(){
   const { data, isLoading } = useQuery({ queryKey:["budgets"], queryFn: async()=>{
     const { data, error } = await supabase.from("budgets").select("*").order("created_at",{ascending:false}); if(error) throw error; return data;
   }});
+  const { data: allReqs } = useQuery({ queryKey:["requests"], queryFn: async()=>{
+    const { data, error } = await supabase.from("reimbursement_requests").select("budget_id,amount,status"); if(error) throw error; return data;
+  }});
+  const healthOf = (b: { id: string; allocated_amount: number | string; total_amount: number | string; available_amount: number | string }) => {
+    const exposure = (allReqs ?? []).filter((r) => r.budget_id === b.id && r.status === "pending").reduce((s, r) => s + Number(r.amount), 0);
+    return budgetHealth({ allocated: b.allocated_amount, total: b.total_amount, available: b.available_amount, pendingExposure: exposure, runwayDays: null });
+  };
+  const healthMeta = {
+    onTrack: { variant: "approved" as const, label: t("health.onTrack") },
+    atRisk: { variant: "pending" as const, label: t("health.atRisk") },
+    over: { variant: "destructive" as const, label: t("health.over") },
+  };
   const mut = useMutation({ mutationFn: async()=>{
     const parsed = schema.parse({ ...form });
     const { error } = await supabase.from("budgets").insert({ name: parsed.name, total_amount: Number(parsed.total_amount), currency: parsed.currency ?? "IDR", period_start: parsed.period_start || null, period_end: parsed.period_end || null, owner_id: profile!.id });
@@ -79,13 +93,20 @@ export default function Budgets(){
       {isOwner && <Button onClick={()=>setOpen(true)}>{t("budgets.new")}</Button>}
     </div></div>
     <Card><CardHeader><CardTitle>{t("budgets.all")}</CardTitle></CardHeader><CardContent>
-      {isLoading ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}</div> :
+      {isLoading ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}</div>
+      : (data?.length ?? 0) === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-10 text-center animate-fade-up">
+          <span className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-3 text-white shadow-lg"><Wallet className="h-6 w-6" /></span>
+          <div className="font-medium">{t("budgets.noBudgets")}</div>
+          {isOwner && <Button onClick={()=>setOpen(true)}>{t("budgets.new")}</Button>}
+        </div>
+      ) : (
       <Table className="min-w-[720px]"><TableHeader><TableRow><TableHead>{t("budgets.name")}</TableHead><TableHead>{t("budgets.total")}</TableHead><TableHead>{t("budgets.allocated")}</TableHead><TableHead>{t("budgets.available")}</TableHead><TableHead>{t("budgets.usage")}</TableHead><TableHead>{t("budgets.status")}</TableHead>{isOwner && <TableHead>{t("budgets.action")}</TableHead>}</TableRow></TableHeader>
-      <TableBody>{filteredBudgets?.map(b=> <TableRow key={b.id}><TableCell><Link to={`/budgets/${b.id}`} className="text-primary underline">{b.name}</Link></TableCell><TableCell>{formatMoney(Number(b.total_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.allocated_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.available_amount), b.currency)}</TableCell><TableCell><div className="h-2 w-28 rounded bg-muted overflow-hidden" title={t("budgets.usedPct", { pct: usagePct(b).toFixed(1) })}><div className="h-2 rounded bg-primary" style={{ width: `${usagePct(b)}%` }} /></div></TableCell><TableCell><Badge variant={b.status==="active"?"approved":"secondary"}>{b.status}</Badge></TableCell>{isOwner && <TableCell>{b.status === "active"
+      <TableBody>{filteredBudgets?.map(b=> <TableRow key={b.id}><TableCell><Link to={`/budgets/${b.id}`} className="text-primary underline">{b.name}</Link></TableCell><TableCell>{formatMoney(Number(b.total_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.allocated_amount), b.currency)}</TableCell><TableCell>{formatMoney(Number(b.available_amount), b.currency)}</TableCell><TableCell><div className="h-2 w-28 rounded bg-muted overflow-hidden" title={t("budgets.usedPct", { pct: usagePct(b).toFixed(1) })}><div className="h-2 rounded bg-primary" style={{ width: `${usagePct(b)}%` }} /></div></TableCell><TableCell><span className="flex flex-wrap gap-1"><Badge variant={b.status==="active"?"approved":"secondary"}>{b.status}</Badge><Badge variant={healthMeta[healthOf(b)].variant}>{healthMeta[healthOf(b)].label}</Badge></span></TableCell>{isOwner && <TableCell>{b.status === "active"
         ? <Button size="sm" variant="outline" onClick={()=>statusMut.mutate({ id: b.id, status: "closed" })} disabled={statusMut.isPending}>{t("budgets.close")}</Button>
         : <Button size="sm" variant="outline" onClick={()=>statusMut.mutate({ id: b.id, status: "active" })} disabled={statusMut.isPending}>{t("budgets.reopen")}</Button>}</TableCell>}</TableRow>)}
-      {filteredBudgets?.length===0 && <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center text-muted-foreground">{bq.trim() ? t("req.noMatch") : t("budgets.noBudgets")}</TableCell></TableRow>}
-      </TableBody></Table>}
+      {filteredBudgets?.length===0 && <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center text-muted-foreground">{t("req.noMatch")}</TableCell></TableRow>}
+      </TableBody></Table>)}
     </CardContent></Card>
 
     <Dialog open={open} onOpenChange={setOpen}>
