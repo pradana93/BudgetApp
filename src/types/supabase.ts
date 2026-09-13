@@ -49,9 +49,9 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["personal_categories"]["Insert"]>;
       };
       personal_notes: {
-        Row: { id: string; user_id: string; title: string; body: string; amount: number | null; category_id: string | null; pinned: boolean; created_at: string; updated_at: string };
-        Insert: { id?: string; user_id: string; title: string; body?: string; amount?: number | null; category_id?: string | null; pinned?: boolean };
-        Update: { title?: string; body?: string; amount?: number | null; category_id?: string | null; pinned?: boolean };
+        Row: { id: string; user_id: string; title: string; body: string; amount: number | null; category_id: string | null; pinned: boolean; direction: "income" | "expense"; entry_date: string; created_at: string; updated_at: string };
+        Insert: { id?: string; user_id: string; title: string; body?: string; amount?: number | null; category_id?: string | null; pinned?: boolean; direction?: "income" | "expense"; entry_date?: string };
+        Update: { title?: string; body?: string; amount?: number | null; category_id?: string | null; pinned?: boolean; direction?: "income" | "expense"; entry_date?: string };
       };
     };
     Views: { [_ in never]: never };
