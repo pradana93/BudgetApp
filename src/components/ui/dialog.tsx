@@ -2,9 +2,9 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 export function Dialog({ open, onOpenChange, children }: { open: boolean; onOpenChange:(o:boolean)=>void; children: React.ReactNode }){
   if(!open) return null;
-  return <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-    <div className="fixed inset-0 bg-black/50 animate-fade-up" onClick={()=>onOpenChange(false)} />
-    <div className="mobile-sheet relative bg-background rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:max-w-lg sm:mx-4 max-h-[92vh] sm:max-h-[90vh] overflow-auto animate-pop">{children}</div>
+  return <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px] animate-fade-up" onClick={()=>onOpenChange(false)} />
+    <div className="mobile-sheet relative bg-background rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg sm:mx-4 max-h-[92vh] sm:max-h-[88vh] overflow-auto animate-pop border border-border/60">{children}</div>
   </div>;
 }
 export function DialogHeader({ className, ...p }: React.HTMLAttributes<HTMLDivElement>){ return <div className={cn("flex flex-col space-y-1.5 p-6 pb-2", className)} {...p} />; }

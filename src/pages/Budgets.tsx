@@ -5,10 +5,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { formatMoney, isValidMoney } from "@/lib/money";
 import { budgetHealth } from "@/lib/insights";
 import { useSession } from "@/hooks/useSession";
@@ -119,28 +118,48 @@ export default function Budgets(){
     </CardContent></Card>
 
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogHeader><DialogTitle>{t("budgets.dialogTitle")}</DialogTitle></DialogHeader>
+      <DialogHeader className="pb-3 border-b border-border/60 mb-1">
+        <div className="flex items-center gap-3">
+          <span className="rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 text-white shadow-md shrink-0"><Wallet className="h-5 w-5" /></span>
+          <div className="min-w-0">
+            <DialogTitle>{t("budgets.dialogTitle")}</DialogTitle>
+            <DialogDescription>{t("budgets.dialogSub")}</DialogDescription>
+          </div>
+        </div>
+      </DialogHeader>
       <DialogContent>
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           <div><Label>{t("budgets.name")}</Label><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder={t("budgets.phName")} maxLength={200} />
             {fieldErrs.name?.[0] && <div className="text-sm text-destructive mt-1">{fieldErrs.name[0]}</div>}</div>
-          <div><Label>{t("budgets.fTotalAmt")} ({form.currency})</Label><Input value={form.total_amount} onChange={e=>setForm({...form,total_amount:e.target.value})} placeholder={t("budgets.phTotal")} inputMode="decimal" />
+          <div>
+            <div className="flex items-end justify-between gap-2">
+              <Label className="flex-1 space-y-2">{t("budgets.fTotalAmt")} ({form.currency})<Input value={form.total_amount} onChange={e=>setForm({...form,total_amount:e.target.value})} placeholder={t("budgets.phTotal")} inputMode="decimal" /></Label>
+              <span className="flex rounded-lg border border-input overflow-hidden shrink-0" role="group" aria-label={t("budgets.currency")}>
+                {(["IDR", "USD"] as const).map((c) => (
+                  <button key={c} type="button" onClick={()=>setForm({...form,currency:c})}
+                    className={`h-10 px-3 text-sm font-medium transition-colors ${form.currency === c ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}>{c}</button>
+                ))}
+              </span>
+            </div>
             {fieldErrs.total_amount?.[0] && <div className="text-sm text-destructive mt-1">{fieldErrs.total_amount[0]}</div>}
             {form.currency === "IDR" && <div className="flex gap-2 mt-2">
               {[1000000, 5000000, 10000000].map((n) => <Button key={n} type="button" size="sm" variant="outline" onClick={()=>bump(n)}>+{(n / 1000000).toLocaleString()} jt</Button>)}
-            </div>}</div>
-          <div><Label>{t("budgets.currency")}</Label><Select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}><option value="IDR">IDR</option><option value="USD">USD</option></Select></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><Label>{t("budgets.fStart")}</Label><Input type="date" value={form.period_start} onChange={e=>setForm({...form,period_start:e.target.value})} /></div><div><Label>{t("budgets.fEnd")}</Label><Input type="date" value={form.period_end} onChange={e=>setForm({...form,period_end:e.target.value})} />
+            </div>}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-3"><div><Label>{t("budgets.fStart")}</Label><Input type="date" value={form.period_start} onChange={e=>setForm({...form,period_start:e.target.value})} /></div><div><Label>{t("budgets.fEnd")}</Label><Input type="date" value={form.period_end} onChange={e=>setForm({...form,period_end:e.target.value})} />
             {fieldErrs.period_end?.[0] && <div className="text-sm text-destructive mt-1">{fieldErrs.period_end[0]}</div>}</div></div>
           {isValidMoney(form.total_amount) && (
-            <div className="rounded-lg bg-gradient-to-r from-blue-500/10 to-violet-500/10 border border-primary/20 p-3">
+            <div className="rounded-xl bg-gradient-to-r from-blue-500/10 to-violet-500/10 border border-primary/20 px-4 py-3 flex items-baseline justify-between gap-2">
               <span className="text-xl font-bold tabular text-gradient">{formatMoney(Number(form.total_amount), form.currency || "IDR")}</span>
-              {periodDays !== null && <span className="ml-2 text-sm text-muted-foreground">• {t("budgets.periodDays", { n: periodDays })}</span>}
+              {periodDays !== null && <span className="text-sm text-muted-foreground whitespace-nowrap">• {t("budgets.periodDays", { n: periodDays })}</span>}
             </div>
           )}
         </div>
       </DialogContent>
-      <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)}>{t("common.cancel")}</Button><Button onClick={onCreate} disabled={mut.isPending}>{mut.isPending?t("budgets.creating"):t("budgets.create")}</Button></DialogFooter>
+      <DialogFooter className="sticky bottom-0 bg-background/95 backdrop-blur border-t border-border/60 gap-2">
+        <Button variant="outline" onClick={()=>setOpen(false)} className="flex-1 sm:flex-none">{t("common.cancel")}</Button>
+        <Button onClick={onCreate} disabled={mut.isPending} className="flex-1 sm:flex-none sm:min-w-[120px]">{mut.isPending?t("budgets.creating"):t("budgets.create")}</Button>
+      </DialogFooter>
     </Dialog>
   </div>;
 }
