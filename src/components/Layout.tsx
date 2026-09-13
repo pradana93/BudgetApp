@@ -23,6 +23,36 @@ const rewardsNav = { to: "/rewards", key: "nav.rewards" as const, icon: Trophy }
 
 type Tab = { to: string; key: StringKey; icon: LucideIcon; badge?: number };
 
+const TITLES: Record<string, StringKey> = {
+  "/": "nav.dashboard",
+  "/budgets": "budgets.title",
+  "/budgets/new": "budgets.new",
+  "/requests": "req.title",
+  "/requests/new": "req.new",
+  "/settings": "set.title",
+  "/admin": "admin.title",
+  "/notifications": "notif.title",
+  "/rewards": "nav.rewards",
+};
+
+function titleFor(pathname: string): StringKey {
+  if (TITLES[pathname]) return TITLES[pathname];
+  if (pathname.startsWith("/budgets/")) return "budgets.title";
+  if (pathname.startsWith("/requests/")) return "req.title";
+  return "nav.dashboard";
+}
+
+function initialsOf(name: string): string {
+  return (
+    name
+      .split(/[\s@._-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => (w[0] ?? "").toUpperCase())
+      .join("") || "?"
+  );
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useSession();
   const { t } = useLang();
@@ -73,65 +103,83 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { to: "/notifications", key: "nav.notifications", icon: Bell, badge: unread ?? 0 },
   ];
 
+  const displayName = profile?.display_name || profile?.email || t("nav.userFallback");
+
   return (
-    <div className="min-h-screen flex bg-muted/30">
-      <aside className="w-64 shrink-0 border-r bg-card hidden md:flex flex-col sticky top-0 h-screen">
-        <div className="p-6 border-b">
-          <div className="font-bold text-lg">BudgetApp</div>
-          <div className="text-xs text-muted-foreground">{t("nav.tagline")}</div>
-          {profile && <Badge variant={profile.role === "owner" ? "default" : "secondary"} className="mt-2 capitalize">{profile.role}</Badge>}
+    <div className="min-h-screen flex bg-muted/30 relative">
+      <div aria-hidden className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute top-1/3 -right-32 h-96 w-96 rounded-full bg-violet-500/10 blur-3xl" />
+      <aside className="w-[270px] shrink-0 border-r border-border/60 bg-card/80 backdrop-blur hidden md:flex flex-col sticky top-0 h-screen">
+        <div className="p-5 pb-4 flex items-center gap-3">
+          <span className="rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 p-2.5 text-white shadow-lg shadow-blue-500/25 shrink-0">
+            <Wallet className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <div className="font-bold text-[17px] tracking-tight leading-none">BudgetApp</div>
+            <div className="text-[11px] text-muted-foreground mt-1 truncate">{t("nav.tagline")}</div>
+          </div>
+          {profile && <Badge variant={profile.role === "owner" ? "default" : "secondary"} className="ml-auto capitalize shrink-0">{profile.role}</Badge>}
         </div>
-        <nav className="flex-1 p-3 space-y-1">
-          <button onClick={() => setPaletteOpen(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+        <div className="px-5 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Menu</div>
+        <nav className="flex-1 p-3 pt-2 space-y-1 overflow-y-auto">
+          <button onClick={() => setPaletteOpen(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground border border-dashed border-border/70 hover:bg-accent hover:text-accent-foreground transition-colors">
             <Search className="h-4 w-4" /> {t("cmd.search")}
-            <kbd className="ml-auto rounded border border-input px-1.5 text-[10px] font-sans">⌘K</kbd>
+            <kbd className="ml-auto rounded-md border border-input px-1.5 py-0.5 text-[10px] font-sans bg-background">⌘K</kbd>
           </button>
           {fullItems.map((n) => {
             const active = loc.pathname === n.to || (n.to !== "/" && loc.pathname.startsWith(n.to));
             return (
-              <Link key={n.to} to={n.to} className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm ${active ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
-                <n.icon className="h-4 w-4" /> {t(n.key)}
+              <Link key={n.to} to={n.to} className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${active ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-md shadow-blue-500/25" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}>
+                <n.icon className="h-4 w-4 shrink-0" /> {t(n.key)}
               </Link>
             );
           })}
         </nav>
-        <div className="p-4 border-t space-y-2">
-          <div className="flex items-center gap-2">
+        <div className="p-3 border-t border-border/60">
+          <div className="rounded-2xl bg-muted/50 border border-border/60 p-3 flex items-center gap-2.5">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
-              {(() => {
-                const name = profile?.display_name || profile?.email || "?";
-                return name.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map((w) => (w[0] ?? "").toUpperCase()).join("") || "?";
-              })()}
+              {initialsOf(displayName)}
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium truncate">{profile?.email ?? profile?.display_name ?? t("nav.userFallback")}</div>
-              <div className="text-xs text-muted-foreground capitalize">{profile?.role}</div>
+              <div className="text-sm font-semibold truncate" title={profile?.email ?? undefined}>{profile?.email ?? profile?.display_name ?? t("nav.userFallback")}</div>
+              <div className="text-[11px] text-muted-foreground capitalize">{profile?.role}</div>
             </div>
-            <span className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" aria-label={t("nav.notifications")} onClick={() => navgt("/notifications")} className="relative">
-                <Bell className="h-4 w-4" />
-                {(unread ?? 0) > 0 && <span className="absolute -top-1 -right-1 rounded-full bg-destructive text-destructive-foreground text-[10px] px-1 leading-4">{unread}</span>}
-              </Button>
-              <ThemeToggle />
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <LanguageToggle />
-            <Button variant="ghost" size="sm" className="justify-start" onClick={async () => { await signOut(); navgt("/login"); }}><LogOut className="h-4 w-4 mr-2" /> {t("nav.signOut")}</Button>
+            <Button variant="ghost" size="sm" className="shrink-0 h-8 w-8 p-0" onClick={async () => { await signOut(); navgt("/login"); }} aria-label={t("nav.signOut")} title={t("nav.signOut")}><LogOut className="h-4 w-4" /></Button>
           </div>
         </div>
       </aside>
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="md:hidden sticky top-0 z-30 border-b bg-card/95 backdrop-blur p-3 flex items-center justify-between">
-          <span className="font-bold">BudgetApp</span>
+        <header className="hidden md:flex sticky top-0 z-30 items-center justify-between gap-3 border-b border-border/60 bg-background/80 backdrop-blur px-6 py-3">
+          <h2 className="text-lg font-bold tracking-tight">{t(titleFor(loc.pathname))}</h2>
+          <div className="flex items-center gap-1.5">
+            <Button variant="ghost" size="sm" onClick={() => setPaletteOpen(true)} className="text-muted-foreground" aria-label={t("cmd.search")}>
+              <Search className="h-4 w-4" />
+              <kbd className="rounded-md border border-input px-1.5 py-0.5 text-[10px] font-sans bg-background">⌘K</kbd>
+            </Button>
+            <Button variant="ghost" size="sm" aria-label={t("nav.notifications")} onClick={() => navgt("/notifications")} className="relative">
+              <Bell className="h-4 w-4" />
+              {(unread ?? 0) > 0 && <span className="absolute top-0.5 right-0.5 rounded-full bg-destructive text-destructive-foreground text-[10px] px-1 leading-4">{unread}</span>}
+            </Button>
+            <ThemeToggle />
+            <LanguageToggle />
+            <span title={profile?.email ?? undefined} className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-[11px] font-bold text-white">
+              {initialsOf(displayName)}
+            </span>
+          </div>
+        </header>
+        <header className="md:hidden sticky top-0 z-30 border-b border-border/60 bg-card/95 backdrop-blur p-3 flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <span className="rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 p-1.5 text-white"><Wallet className="h-4 w-4" /></span>
+            <span className="font-bold">BudgetApp</span>
+          </span>
           <span className="flex items-center gap-1">
             <Button variant="ghost" size="sm" aria-label={t("nav.settings")} onClick={() => navgt("/settings")}><Settings className="h-4 w-4" /></Button>
             <LanguageToggle />
             <ThemeToggle />
           </span>
         </header>
-        <main className="flex-1 p-4 md:p-6 pb-28 md:pb-6 max-w-6xl w-full mx-auto"><div key={loc.pathname} className="animate-fade-up">{children}</div></main>
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t bg-card/95 backdrop-blur transform-gpu" aria-label="Primary">
+        <main className="flex-1 p-4 md:p-6 pb-28 md:pb-8 max-w-6xl w-full mx-auto"><div key={loc.pathname} className="animate-fade-up">{children}</div></main>
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/60 bg-card/95 backdrop-blur transform-gpu" aria-label="Primary">
           <div className="grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
             {tabs.map((tb) => {
               const active = tb.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(tb.to);
@@ -141,7 +189,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   onClick={() => navgt(tb.to)}
                   className={`relative flex min-w-0 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
                 >
-                  {active && <span className="absolute top-0 h-0.5 w-10 rounded-full bg-primary" />}
+                  {active && <span className="absolute top-0 h-0.5 w-10 rounded-full bg-gradient-to-r from-blue-500 to-violet-500" />}
                   <span className="relative">
                     <tb.icon className="h-5 w-5" />
                     {!!tb.badge && tb.badge > 0 && <span className="absolute -top-1.5 -right-2.5 rounded-full bg-destructive text-destructive-foreground text-[10px] px-1 leading-4">{tb.badge}</span>}

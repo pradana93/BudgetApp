@@ -49,8 +49,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500/10 via-background to-violet-500/10 p-4">
-      <Card className="w-full max-w-3xl overflow-hidden md:grid md:grid-cols-[1fr_1.15fr] animate-pop">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500/10 via-background to-violet-500/10 p-4 relative overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-blue-500/15 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-violet-500/15 blur-3xl" />
+      <Card className="relative w-full max-w-3xl overflow-hidden md:grid md:grid-cols-[1fr_1.15fr] animate-pop shadow-2xl">
         <AuthBrand />
         <div className="p-6 md:p-8">
           <CardTitle className="text-2xl">{t("login.title")}</CardTitle>

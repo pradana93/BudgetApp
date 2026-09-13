@@ -111,12 +111,13 @@ export default function Dashboard(){
   }, [ledger, requests]);
 
   return <div className="space-y-6">
-    <div className="flex items-center justify-between gap-2">
-      <div>
+    <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white p-5 md:p-6 flex flex-wrap items-center justify-between gap-3 shadow-lg overflow-hidden relative">
+      <div aria-hidden className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
+      <div className="relative">
         <h1 className="text-2xl font-bold tracking-tight">{t(greetKey)}{who ? `, ${who}` : ""}</h1>
-        <p className="text-sm text-muted-foreground">{today}</p>
+        <p className="text-sm text-white/80 mt-0.5">{today}</p>
       </div>
-      <Badge variant="pending">{t("dash.pendingBadge", { count: pending })}</Badge>
+      <Badge variant="pending" className="relative">{t("dash.pendingBadge", { count: pending })}</Badge>
     </div>
     <div className="grid gap-4 md:grid-cols-3">
       {loading ? [0, 1, 2].map((i) => <div key={i} className="skeleton h-[104px]" />) : <>
