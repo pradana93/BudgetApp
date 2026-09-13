@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, Search, Trophy, CalendarDays, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, Search, Trophy, CalendarDays, NotebookPen, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserAvatar } from "@/components/UserAvatar";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -24,6 +24,7 @@ const nav = [
 const adminNav = { to: "/admin", key: "nav.admin" as const, icon: ShieldCheck };
 const rewardsNav = { to: "/rewards", key: "nav.rewards" as const, icon: Trophy };
 const calendarNav = { to: "/calendar", key: "nav.calendar" as const, icon: CalendarDays };
+const spaceNav = { to: "/space", key: "nav.space" as const, icon: NotebookPen };
 
 type Tab = { to: string; key: StringKey; icon: LucideIcon; badge?: number };
 
@@ -38,6 +39,7 @@ const TITLES: Record<string, StringKey> = {
   "/notifications": "notif.title",
   "/rewards": "nav.rewards",
   "/calendar": "nav.calendar",
+  "/space": "nav.space",
 };
 
 function titleFor(pathname: string): StringKey {
@@ -51,7 +53,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useSession();
   const { t } = useLang();
   const avatarCls = useAvatarTheme(profile?.id);
-  const baseItems = [...nav.slice(0, 3), calendarNav, rewardsNav, nav[3]];
+  const baseItems = [...nav.slice(0, 3), calendarNav, spaceNav, rewardsNav, nav[3]];
   const fullItems = profile?.role === "owner" ? [...baseItems.slice(0, 5), adminNav, baseItems[5]] : baseItems;
   const loc = useLocation();
   const navgt = useNavigate();
@@ -94,7 +96,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { to: "/requests", key: "nav.requests", icon: Receipt },
     ...(profile?.role === "owner"
       ? [{ to: "/admin", key: "nav.admin", icon: ShieldCheck } as Tab]
-      : [{ to: "/settings", key: "nav.settings", icon: Settings } as Tab]),
+      : [{ to: "/space", key: "nav.space", icon: NotebookPen } as Tab]),
     { to: "/notifications", key: "nav.notifications", icon: Bell, badge: unread ?? 0 },
   ];
 

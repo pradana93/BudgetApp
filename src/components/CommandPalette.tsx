@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 import {
   LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell,
-  Plus, LogOut, Languages, Trophy, History, CalendarDays, type LucideIcon,
+  Plus, LogOut, Languages, Trophy, History, CalendarDays, NotebookPen, type LucideIcon,
 } from "lucide-react";
 import type { StringKey } from "@/i18n/translations";
 
@@ -95,6 +95,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     { id: "p-budgets", group: "cmd.pages", label: t("nav.budgets"), icon: Wallet, run: () => go("/budgets") },
     { id: "p-requests", group: "cmd.pages", label: t("nav.requests"), icon: Receipt, run: () => go("/requests") },
     { id: "p-calendar", group: "cmd.pages", label: t("nav.calendar"), icon: CalendarDays, run: () => go("/calendar") },
+    { id: "p-space", group: "cmd.pages", label: t("nav.space"), icon: NotebookPen, run: () => go("/space") },
     ...(profile?.role === "owner"
       ? [{ id: "p-admin", group: "cmd.pages" as StringKey, label: t("nav.admin"), icon: ShieldCheck, run: () => go("/admin") }]
       : []),
