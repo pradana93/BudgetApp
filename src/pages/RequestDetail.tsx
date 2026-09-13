@@ -14,8 +14,7 @@ import { formatDate, isOverdue } from "@/lib/datetime";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
-
-const CATEGORIES = ["groceries", "transport", "dining", "utilities", "health", "other"];
+import { useCategories } from "@/hooks/useCategories";
 
 export default function RequestDetail(){
   const { id } = useParams();
@@ -31,6 +30,8 @@ export default function RequestDetail(){
   const [editForm,setEditForm]=React.useState({ amount:"", category:"groceries", merchant:"", description:"", due_date:"" });
   const [editErr,setEditErr]=React.useState<string|null>(null);
   const [confirmDelete,setConfirmDelete]=React.useState(false);
+  const [confirmUndo,setConfirmUndo]=React.useState(false);
+  const { categories } = useCategories();
 
   const { data, isLoading } = useQuery({ queryKey:["requests",id], queryFn: async()=>{
     const { data, error } = await supabase.from("reimbursement_requests").select("*").eq("id",id!).single(); if(error) throw error; return data;
@@ -84,6 +85,16 @@ export default function RequestDetail(){
     if(error) throw error;
   }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["requests"]}); toast({title:t("rd.deleted")}); nav("/requests"); }, onError:(e:Error)=> toast({title:t("rd.deleteFailed"), description:e.message, variant:"destructive"}) });
 
+  const unapprove = useMutation({ mutationFn: async()=>{
+    const { error } = await supabase.rpc("unapprove_request",{ p_request_id: id! });
+    if(error) throw error;
+  }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["requests"]}); qc.invalidateQueries({queryKey:["budgets"]}); setConfirmUndo(false); toast({title:t("rd.approvalCanceled")}); }, onError:(e:Error)=> toast({title:t("rd.cancelFailed"), description:e.message, variant:"destructive"}) });
+
+  const unreconcile = useMutation({ mutationFn: async()=>{
+    const { error } = await supabase.rpc("unreconcile_request",{ p_request_id: id! });
+    if(error) throw error;
+  }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["requests"]}); qc.invalidateQueries({queryKey:["admin-ledger"]}); setConfirmUndo(false); toast({title:t("rd.reconCanceled")}); }, onError:(e:Error)=> toast({title:t("rd.cancelFailed"), description:e.message, variant:"destructive"}) });
+
   if(isLoading) return <div className="p-4 text-sm text-muted-foreground">{t("common.loading")}</div>;
   if(!data) return <div className="p-4">{t("rd.notFound")}</div>;
 
@@ -101,7 +112,7 @@ export default function RequestDetail(){
 
     {canEdit && editing && <Card><CardHeader><CardTitle>{t("rd.editTitle")}</CardTitle></CardHeader><CardContent className="space-y-3">
       <div><Label>{t("new.amount")}</Label><Input value={editForm.amount} onChange={e=>setEditForm({...editForm,amount:e.target.value})} /></div>
-      <div><Label>{t("new.category")}</Label><Select value={editForm.category} onChange={e=>setEditForm({...editForm,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</Select></div>
+      <div><Label>{t("new.category")}</Label><Select value={editForm.category} onChange={e=>setEditForm({...editForm,category:e.target.value})}>{categories.map(c=><option key={c} value={c}>{c}</option>)}</Select></div>
       <div><Label>{t("new.merchant")}</Label><Input value={editForm.merchant} onChange={e=>setEditForm({...editForm,merchant:e.target.value})} /></div>
       <div><Label>{t("new.description")}</Label><Textarea value={editForm.description} onChange={e=>setEditForm({...editForm,description:e.target.value})} /></div>
       <div><Label>{t("new.dueDate")}</Label><Input type="date" value={editForm.due_date} onChange={e=>setEditForm({...editForm,due_date:e.target.value})} /></div>
@@ -117,6 +128,18 @@ export default function RequestDetail(){
       <Label>{t("rd.reconcileNote")}</Label><Textarea value={note} onChange={e=>setNote(e.target.value)} placeholder={t("rd.reconcilePh")} />
       <Button onClick={()=>reconcile.mutate()} disabled={reconcile.isPending}>{reconcile.isPending?t("rd.reconciling"):t("rd.reconcileBtn")}</Button>
       <p className="text-xs text-muted-foreground">{t("rd.reconcileHelpA")} <code>reconcile_request()</code>. {t("rd.reconcileHelpB")}</p>
+      <div className="pt-1 border-t">
+        {!confirmUndo
+          ? <Button variant="outline" onClick={()=>setConfirmUndo(true)}>{t("rd.cancelApproval")}</Button>
+          : <div className="flex flex-col sm:flex-row sm:items-center gap-2"><span className="text-sm">{t("rd.confirmCancel")}</span><span className="flex gap-2"><Button variant="destructive" size="sm" onClick={()=>unapprove.mutate()} disabled={unapprove.isPending}>{unapprove.isPending?t("rd.canceling"):t("rd.yesCancel")}</Button><Button variant="outline" size="sm" onClick={()=>setConfirmUndo(false)}>{t("common.cancel")}</Button></span></div>}
+      </div>
+    </CardContent></Card>}
+
+    {isOwner && data.status==="reconciled" && <Card><CardHeader><CardTitle>{t("rd.cancelRecon")}</CardTitle></CardHeader><CardContent className="space-y-3">
+      <p className="text-xs text-muted-foreground">{t("rd.confirmCancel")}</p>
+      {!confirmUndo
+        ? <Button variant="destructive" onClick={()=>setConfirmUndo(true)}>{t("rd.cancelRecon")}</Button>
+        : <div className="flex gap-2"><Button variant="destructive" onClick={()=>unreconcile.mutate()} disabled={unreconcile.isPending}>{unreconcile.isPending?t("rd.canceling"):t("rd.yesCancel")}</Button><Button variant="outline" onClick={()=>setConfirmUndo(false)}>{t("common.cancel")}</Button></div>}
     </CardContent></Card>}
 
     {canDelete && !editing && <div>

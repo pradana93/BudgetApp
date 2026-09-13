@@ -11,6 +11,7 @@ import { formatMoney } from "@/lib/money";
 import { formatDate, formatDateTime } from "@/lib/datetime";
 import { useToast } from "@/components/ui/toast";
 import { useRealtime } from "@/hooks/useRealtime";
+import { normalizeCategory, useCategories } from "@/hooks/useCategories";
 import { useLang } from "@/i18n/LanguageContext";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -35,6 +36,10 @@ export default function Admin() {
   const [reasons, setReasons] = React.useState<Record<string, string>>({});
   const [topups, setTopups] = React.useState<Record<string, string>>({});
   const [limit, setLimit] = React.useState(100);
+  const { categories } = useCategories();
+  const [newCat, setNewCat] = React.useState("");
+  const [catErr, setCatErr] = React.useState<string | null>(null);
+  const usageCount = (name: string) => (requests ?? []).filter((r) => r.category === name).length;
 
   const { data: budgets } = useQuery({ queryKey: ["budgets"], queryFn: () => fetchAll<Budget>("budgets") });
   const { data: requests } = useQuery({ queryKey: ["requests"], queryFn: () => fetchAll<Req>("reimbursement_requests") });
@@ -65,14 +70,38 @@ export default function Admin() {
     onError: (e: Error) => toast({ title: t("admin.failReject"), description: e.message, variant: "destructive" }),
   });
 
-  const topup = useMutation({
-    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
+  const topup = useMutation({    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
       const { error } = await supabase.rpc("topup_budget", { p_budget_id: id, p_amount: amount, p_description: "Admin top-up" });
       if (error) throw error;
     },
     onSuccess: () => { invalidate(); setTopups({}); toast({ title: t("admin.toppedUp") }); },
     onError: (e: Error) => toast({ title: t("admin.failTopup"), description: e.message, variant: "destructive" }),
   });
+
+  const addCat = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from("categories").insert({ name });
+      if (error) throw error;
+    },
+    onSuccess: () => { setNewCat(""); setCatErr(null); qc.invalidateQueries({ queryKey: ["categories"] }); toast({ title: t("admin.catAdded") }); },
+    onError: (e: Error) => toast({ title: t("admin.catFailed"), description: e.message, variant: "destructive" }),
+  });
+
+  const delCat = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from("categories").delete().eq("name", name);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["categories"] }); toast({ title: t("admin.catDeleted") }); },
+    onError: (e: Error) => toast({ title: t("admin.catFailed"), description: e.message, variant: "destructive" }),
+  });
+
+  const onAddCat = () => {
+    const name = normalizeCategory(newCat);
+    if (!name) { setCatErr(t("admin.catsHint")); return; }
+    setCatErr(null);
+    addCat.mutate(name);
+  };
 
   const pending = (requests ?? []).filter((r) => r.status === "pending");
   const totalBudget = (budgets ?? []).reduce((s, b) => s + Number(b.total_amount), 0);
@@ -152,6 +181,32 @@ export default function Admin() {
           </TableBody></Table>
         </CardContent></Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle>{t("admin.cats")}</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {categories.map((c) => {
+              const used = usageCount(c);
+              return (
+                <span key={c} className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm">
+                  {c}
+                  {used > 0
+                    ? <span className="text-xs text-muted-foreground">{t("admin.inUse", { n: used })}</span>
+                    : <button onClick={() => delCat.mutate(c)} disabled={delCat.isPending} className="text-destructive hover:opacity-70 text-base leading-none" aria-label={`Delete ${c}`}>×</button>}
+                </span>
+              );
+            })}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 max-w-md">
+            <Input placeholder={t("admin.catPh")} value={newCat} onChange={(e) => setNewCat(e.target.value)} maxLength={30} />
+            <Button onClick={onAddCat} disabled={addCat.isPending}>{addCat.isPending ? t("common.loading") : t("admin.add")}</Button>
+          </div>
+          {catErr
+            ? <div className="text-sm text-destructive mt-2">{catErr}</div>
+            : <div className="text-xs text-muted-foreground mt-2">{t("admin.catsHint")}</div>}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>{t("admin.budgetsTopup")}</CardTitle></CardHeader>

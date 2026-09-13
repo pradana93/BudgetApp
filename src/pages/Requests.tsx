@@ -12,17 +12,18 @@ import { formatMoney } from "@/lib/money";
 import { formatDate, isOverdue } from "@/lib/datetime";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
+import { useCategories } from "@/hooks/useCategories";
 
 const STATUSES = ["all", "pending", "approved", "rejected", "reconciled"] as const;
-const CATEGORIES = ["all", "groceries", "transport", "dining", "utilities", "health", "other"] as const;
 
 export default function Requests(){
   useRealtime();
   const { t, lang } = useLang();
   const [q, setQ] = React.useState("");
   const [status, setStatus] = React.useState<(typeof STATUSES)[number]>("all");
-  const [category, setCategory] = React.useState<(typeof CATEGORIES)[number]>("all");
+  const [category, setCategory] = React.useState<string>("all");
   const [visible, setVisible] = React.useState(20);
+  const { categories } = useCategories();
 
   const { data, isLoading } = useQuery({ queryKey:["requests"], queryFn: async()=>{
     const { data, error } = await supabase.from("reimbursement_requests").select("*").order("created_at",{ascending:false}); if(error) throw error; return data;
@@ -46,8 +47,9 @@ export default function Requests(){
         <Select value={status} onChange={(e)=>setStatus(e.target.value as typeof status)} aria-label={t("req.status")}>
           {STATUSES.map((s)=><option key={s} value={s}>{s === "all" ? t("req.allStatuses") : s}</option>)}
         </Select>
-        <Select value={category} onChange={(e)=>setCategory(e.target.value as typeof category)} aria-label={t("req.category")}>
-          {CATEGORIES.map((c)=><option key={c} value={c}>{c === "all" ? t("req.allCategories") : c}</option>)}
+        <Select value={category} onChange={(e)=>setCategory(e.target.value)} aria-label={t("req.category")}>
+          <option value="all">{t("req.allCategories")}</option>
+          {categories.map((c)=><option key={c} value={c}>{c}</option>)}
         </Select>
         {(q || status !== "all" || category !== "all") && (
           <Button variant="outline" onClick={()=>{ setQ(""); setStatus("all"); setCategory("all"); setVisible(20); }}>{t("req.clear")}</Button>

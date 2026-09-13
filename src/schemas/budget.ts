@@ -7,6 +7,7 @@ export type BudgetMessages = {
   endGteStart?: string;
   budgetRequired?: string;
   amountGt?: string;
+  categoryRequired?: string;
 };
 
 const fb = (v: string | undefined, fallback: string) => v ?? fallback;
@@ -27,7 +28,7 @@ export function getRequestSchema(m: BudgetMessages = {}) {
   return z.object({
     budget_id: z.string().uuid(fb(m.budgetRequired, "Budget required")),
     amount: z.string().min(1).refine((v) => isValidMoney(v) && Number(v) > 0, fb(m.amountGt, "Must be > 0 with max 2 decimals")),
-    category: z.enum(["groceries","transport","dining","utilities","health","other"]),
+    category: z.string().min(1, fb(m.categoryRequired, "Category required")),
     merchant: z.string().max(200).optional().nullable(),
     description: z.string().max(1000).optional().nullable(),
     due_date: z.string().optional().nullable(),

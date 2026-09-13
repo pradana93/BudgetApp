@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
+import { useCategories } from "@/hooks/useCategories";
 import { getRequestSchema } from "@/schemas/budget";
 import { z } from "zod";
 
@@ -19,14 +20,20 @@ export default function NewRequest(){
   const { toast } = useToast();
   const { t } = useLang();
   const nav = useNavigate();
-  const [form,setForm]=React.useState({ budget_id:"", amount:"", category:"groceries" as const, merchant:"", description:"", due_date:"" });
+  const [form,setForm]=React.useState({ budget_id:"", amount:"", category:"groceries" as string, merchant:"", description:"", due_date:"" });
   const [file,setFile]=React.useState<File|null>(null);
   const [err,setErr]=React.useState<string|null>(null);
 
   const schema = React.useMemo(
-    () => getRequestSchema({ budgetRequired: t("v.budgetRequired"), amountGt: t("v.amountGt") }),
+    () => getRequestSchema({ budgetRequired: t("v.budgetRequired"), amountGt: t("v.amountGt"), categoryRequired: t("v.categoryRequired") }),
     [t]
   );
+  const { categories } = useCategories();
+
+  React.useEffect(() => {
+    if (!categories.includes(form.category)) setForm((f) => ({ ...f, category: categories[0] ?? f.category }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories]);
 
   const { data: budgets } = useQuery({ queryKey:["budgets"], queryFn: async()=>{
     const { data, error } = await supabase.from("budgets").select("id,name").eq("status","active"); if(error) throw error; return data;
@@ -61,7 +68,7 @@ export default function NewRequest(){
       <form onSubmit={onSubmit} className="space-y-4">
         <div><Label>{t("new.budget")}</Label><Select value={form.budget_id} onChange={e=>setForm({...form,budget_id:e.target.value})} required><option value="">{t("new.selectBudget")}</option>{budgets?.map(b=> <option key={b.id} value={b.id}>{b.name}</option>)}</Select></div>
         <div><Label>{t("new.amount")}</Label><Input value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder={t("new.amountPh")} required /></div>
-        <div><Label>{t("new.category")}</Label><Select value={form.category} onChange={e=>setForm({...form,category:e.target.value as never})}><option value="groceries">groceries</option><option value="transport">transport</option><option value="dining">dining</option><option value="utilities">utilities</option><option value="health">health</option><option value="other">other</option></Select></div>
+        <div><Label>{t("new.category")}</Label><Select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{categories.map((c)=><option key={c} value={c}>{c}</option>)}</Select></div>
         <div><Label>{t("new.merchant")}</Label><Input value={form.merchant} onChange={e=>setForm({...form,merchant:e.target.value})} placeholder={t("new.merchantPh")} /></div>
         <div><Label>{t("new.description")}</Label><Textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder={t("new.descPh")} /></div>
         <div><Label>{t("new.dueDate")}</Label><Input type="date" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})} /></div>

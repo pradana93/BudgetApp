@@ -11,6 +11,10 @@ describe("Zod schemas", () => {
     expect(() => requestSchema.parse({ budget_id: "not-uuid", amount: "100", category: "groceries" })).toThrow();
     expect(() => requestSchema.parse({ budget_id: "00000000-0000-4000-a000-000000000001", amount: "-5", category: "groceries" })).toThrow();
   });
+  it("request accepts owner-defined categories (dynamic, DB-backed)", () => {
+    expect(() => requestSchema.parse({ budget_id: "00000000-0000-4000-a000-000000000001", amount: "100", category: "travel" })).not.toThrow();
+    expect(() => requestSchema.parse({ budget_id: "00000000-0000-4000-a000-000000000001", amount: "100", category: "" })).toThrow();
+  });
 });
 
 describe("reconciliation state machine (client-side guard)", () => {
