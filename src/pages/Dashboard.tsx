@@ -60,7 +60,7 @@ export default function Dashboard(){
 
   const hour = new Date().getHours();
   const greetKey = hour < 11 ? "dash.greetMorning" : hour < 15 ? "dash.greetMidday" : hour < 19 ? "dash.greetEvening" : "dash.greetNight";
-  const who = profile?.display_name || profile?.email?.split("@")[0] || "";
+  const who = profile?.display_name || String(profile?.email || "").split("@")[0] || "";
   const today = new Date().toLocaleDateString(dateLocale(lang), { weekday: "long", day: "numeric", month: "long" });
 
   const spendByCurrency = React.useMemo(() => {
@@ -71,7 +71,7 @@ export default function Dashboard(){
     }
     return [...map.entries()];
   }, [budgets]);
-  const chartData = budgets?.map(b=> ({ name: b.name.slice(0,12), spend: Number(b.allocated_amount), total: Number(b.total_amount) })) ?? [];
+  const chartData = budgets?.map(b=> ({ name: String(b.name ?? "").slice(0,12), spend: Number(b.allocated_amount), total: Number(b.total_amount) })) ?? [];
   const statusColors: Record<string, string> = { pending: "#f59e0b", approved: "#10b981", rejected: "#ef4444", reconciled: "#3b82f6" };
   const statusData = ["pending", "approved", "rejected", "reconciled"]
     .map((s) => ({ name: s, value: requests?.filter((r) => r.status === s).length ?? 0 }))

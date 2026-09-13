@@ -115,7 +115,7 @@ export default function Admin() {
     },
   });
   const pendingProps = React.useMemo(() => (proposals ?? []).filter((p) => p.status === "pending"), [proposals]);
-  const userEmail = (id: string) => users?.find((u) => u.id === id)?.email ?? id.slice(0, 8);
+  const userEmail = (id: string) => users?.find((u) => u.id === id)?.email ?? String(id || "").slice(0, 8);
 
   const notifyRequester = async (userId: string, title: string, body: string) => {
     await supabase.from("notifications").insert({ user_id: userId, type: "category_decision", title, body, link: "/requests/new" });
@@ -160,7 +160,7 @@ export default function Admin() {
     return [...map.entries()].map(([name, total]) => ({ name, total }));
   }, [requests]);
 
-  const budgetName = (id: string) => budgets?.find((b) => b.id === id)?.name ?? id.slice(0, 8);
+  const budgetName = (id: string) => budgets?.find((b) => b.id === id)?.name ?? String(id || "").slice(0, 8);
 
   const approved = React.useMemo(() => (requests ?? []).filter((r) => r.status === "approved"), [requests]);
   const knownMerchants = React.useMemo(() => {

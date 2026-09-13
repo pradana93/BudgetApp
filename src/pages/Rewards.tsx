@@ -35,7 +35,7 @@ export default function Rewards() {
   const { t, lang } = useLang();
 
   const { data: requests } = useQuery({
-    queryKey: ["requests"],
+    queryKey: ["rewards-requests"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reimbursement_requests")
@@ -47,7 +47,7 @@ export default function Rewards() {
     },
   });
   const { data: users } = useQuery({
-    queryKey: ["admin-users"],
+    queryKey: ["rewards-users"],
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("id,email,display_name");
       if (error) throw error;
@@ -63,7 +63,8 @@ export default function Rewards() {
   const nameOf = (id: string) => {
     if (id === myId) return t("reward.you");
     const u = users?.find((x) => x.id === id);
-    return u?.display_name || u?.email?.split("@")[0] || id.slice(0, 8);
+    const handle = String(u?.display_name || u?.email || "").split("@")[0];
+    return handle || String(id || "").slice(0, 8);
   };
 
   return (
