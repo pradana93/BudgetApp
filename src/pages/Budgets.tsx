@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, isValidMoney } from "@/lib/money";
 import { budgetHealth } from "@/lib/insights";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
@@ -17,7 +17,6 @@ import { Link } from "react-router-dom";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
 import { Wallet } from "lucide-react";
-import { z } from "zod";
 import { getBudgetSchema } from "@/schemas/budget";
 
 export default function Budgets(){
@@ -28,7 +27,7 @@ export default function Budgets(){
   const qc=useQueryClient(); const { toast }=useToast();
   const [open,setOpen]=React.useState(false);
   const [form,setForm]=React.useState({ name:"", total_amount:"", currency:"IDR", period_start:"", period_end:"" });
-  const [err,setErr]=React.useState<string|null>(null);
+  const [fieldErrs,setFieldErrs]=React.useState<Record<string, string[]>>({});
 
   const schema = React.useMemo(
     () => getBudgetSchema({ nameRequired: t("v.nameRequired"), invalidAmount: t("v.invalidAmount"), endGteStart: t("v.endGteStart") }),
@@ -54,7 +53,7 @@ export default function Budgets(){
     const parsed = schema.parse({ ...form });
     const { error } = await supabase.from("budgets").insert({ name: parsed.name, total_amount: Number(parsed.total_amount), currency: parsed.currency ?? "IDR", period_start: parsed.period_start || null, period_end: parsed.period_end || null, owner_id: profile!.id });
     if(error) throw error;
-  }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["budgets"]}); setOpen(false); setForm({ name:"", total_amount:"", currency:"IDR", period_start:"", period_end:"" }); toast({title:t("budgets.created")}); }, onError:(e:Error)=> toast({title:t("budgets.failed"), description:e.message, variant:"destructive"}) });
+  }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["budgets"]}); setOpen(false); setFieldErrs({}); setForm({ name:"", total_amount:"", currency:"IDR", period_start:"", period_end:"" }); toast({title:t("budgets.created")}); }, onError:(e:Error)=> toast({title:t("budgets.failed"), description:e.message, variant:"destructive"}) });
 
   const statusMut = useMutation({ mutationFn: async({ id, status }: { id: string; status: "active" | "closed" })=>{
     const { error } = await supabase.from("budgets").update({ status }).eq("id", id);
@@ -84,7 +83,17 @@ export default function Budgets(){
     URL.revokeObjectURL(url);
   };
 
-  const onCreate = ()=>{ try{ setErr(null); schema.parse({...form}); mut.mutate(); } catch(e){ if(e instanceof z.ZodError) setErr(e.errors[0].message); else setErr((e as Error).message); } };
+  const onCreate = ()=>{
+    const r = schema.safeParse({...form});
+    if (!r.success) { setFieldErrs(r.error.flatten().fieldErrors as Record<string, string[]>); return; }
+    setFieldErrs({});
+    mut.mutate();
+  };
+
+  const bump = (n: number) => setForm({ ...form, total_amount: String((Number(form.total_amount) || 0) + n) });
+  const periodDays = form.period_start && form.period_end
+    ? Math.max(0, Math.round((new Date(form.period_end).getTime() - new Date(form.period_start).getTime()) / 86400000))
+    : null;
 
   return <div className="space-y-4">
     <div className="flex flex-wrap justify-between items-center gap-2"><h1 className="text-2xl font-bold">{t("budgets.title")}</h1><div className="flex gap-2">
@@ -113,11 +122,22 @@ export default function Budgets(){
       <DialogHeader><DialogTitle>{t("budgets.dialogTitle")}</DialogTitle></DialogHeader>
       <DialogContent>
         <div className="grid gap-3">
-          <div><Label>{t("budgets.name")}</Label><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder={t("budgets.phName")} /></div>
-          <div><Label>{t("budgets.fTotalAmt")} ({form.currency})</Label><Input value={form.total_amount} onChange={e=>setForm({...form,total_amount:e.target.value})} placeholder={t("budgets.phTotal")} /></div>
+          <div><Label>{t("budgets.name")}</Label><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder={t("budgets.phName")} maxLength={200} />
+            {fieldErrs.name?.[0] && <div className="text-sm text-destructive mt-1">{fieldErrs.name[0]}</div>}</div>
+          <div><Label>{t("budgets.fTotalAmt")} ({form.currency})</Label><Input value={form.total_amount} onChange={e=>setForm({...form,total_amount:e.target.value})} placeholder={t("budgets.phTotal")} inputMode="decimal" />
+            {fieldErrs.total_amount?.[0] && <div className="text-sm text-destructive mt-1">{fieldErrs.total_amount[0]}</div>}
+            {form.currency === "IDR" && <div className="flex gap-2 mt-2">
+              {[1000000, 5000000, 10000000].map((n) => <Button key={n} type="button" size="sm" variant="outline" onClick={()=>bump(n)}>+{(n / 1000000).toLocaleString()} jt</Button>)}
+            </div>}</div>
           <div><Label>{t("budgets.currency")}</Label><Select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}><option value="IDR">IDR</option><option value="USD">USD</option></Select></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><Label>{t("budgets.fStart")}</Label><Input type="date" value={form.period_start} onChange={e=>setForm({...form,period_start:e.target.value})} /></div><div><Label>{t("budgets.fEnd")}</Label><Input type="date" value={form.period_end} onChange={e=>setForm({...form,period_end:e.target.value})} /></div></div>
-          {err && <div className="text-sm text-destructive">{err}</div>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><Label>{t("budgets.fStart")}</Label><Input type="date" value={form.period_start} onChange={e=>setForm({...form,period_start:e.target.value})} /></div><div><Label>{t("budgets.fEnd")}</Label><Input type="date" value={form.period_end} onChange={e=>setForm({...form,period_end:e.target.value})} />
+            {fieldErrs.period_end?.[0] && <div className="text-sm text-destructive mt-1">{fieldErrs.period_end[0]}</div>}</div></div>
+          {isValidMoney(form.total_amount) && (
+            <div className="rounded-lg bg-gradient-to-r from-blue-500/10 to-violet-500/10 border border-primary/20 p-3">
+              <span className="text-xl font-bold tabular text-gradient">{formatMoney(Number(form.total_amount), form.currency || "IDR")}</span>
+              {periodDays !== null && <span className="ml-2 text-sm text-muted-foreground">• {t("budgets.periodDays", { n: periodDays })}</span>}
+            </div>
+          )}
         </div>
       </DialogContent>
       <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)}>{t("common.cancel")}</Button><Button onClick={onCreate} disabled={mut.isPending}>{mut.isPending?t("budgets.creating"):t("budgets.create")}</Button></DialogFooter>

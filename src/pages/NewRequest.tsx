@@ -8,24 +8,32 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
 import { useCategories, normalizeCategory } from "@/hooks/useCategories";
 import { suggestCategory } from "@/lib/matcher";
-import { Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { formatMoney, isValidMoney } from "@/lib/money";
+import { formatDate } from "@/lib/datetime";
+import { Sparkles, Check } from "lucide-react";
 import { getRequestSchema } from "@/schemas/budget";
 import { z } from "zod";
+
+const DRAFT_KEY = "budgetapp-draft-request";
+const STEPS = ["new.stepBudget", "new.stepDetails", "new.stepReview"] as const;
 
 export default function NewRequest(){
   const { profile } = useSession();
   const { toast } = useToast();
   const { t, lang } = useLang();
   const nav = useNavigate();
+  const [step, setStep] = React.useState(0);
   const [form,setForm]=React.useState({ budget_id:"", amount:"", category:"groceries" as string, merchant:"", description:"", due_date:"" });
   const [file,setFile]=React.useState<File|null>(null);
   const [err,setErr]=React.useState<string|null>(null);
+  const [stepErr,setStepErr]=React.useState<string|null>(null);
+  const [draftLoaded,setDraftLoaded]=React.useState(false);
 
   const schema = React.useMemo(
     () => getRequestSchema({ budgetRequired: t("v.budgetRequired"), amountGt: t("v.amountGt"), categoryRequired: t("v.categoryRequired") }),
@@ -34,14 +42,50 @@ export default function NewRequest(){
   const { categories } = useCategories();
 
   React.useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw) as Partial<typeof form>;
+        setForm((f) => ({ ...f, ...d }));
+        setDraftLoaded(true);
+      }
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+    } catch {
+      /* storage unavailable */
+    }
+  }, [form]);
+
+  const discardDraft = () => {
+    try {
+      window.localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* storage unavailable */
+    }
+    setForm({ budget_id:"", amount:"", category:"groceries", merchant:"", description:"", due_date:"" });
+    setFile(null);
+    setStep(0);
+    setDraftLoaded(false);
+  };
+
+  React.useEffect(() => {
     if (!categories.includes(form.category)) setForm((f) => ({ ...f, category: categories[0] ?? f.category }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories]);
+  }, [categories, form.category]);
 
   const [manualCat, setManualCat] = React.useState(false);
   const [proposal, setProposal] = React.useState("");
   const [proposed, setProposed] = React.useState(false);
   const [proposalErr, setProposalErr] = React.useState<string | null>(null);
+
+  const { data: budgets } = useQuery({ queryKey:["budgets"], queryFn: async()=>{
+    const { data, error } = await supabase.from("budgets").select("id,name,available_amount,currency").eq("status","active"); if(error) throw error; return data;
+  }});
 
   const { data: history } = useQuery({
     queryKey: ["my-history"],
@@ -59,8 +103,6 @@ export default function NewRequest(){
     return suggestCategory({ merchant: form.merchant, amount: form.amount, history: history ?? [], categories, lang });
   }, [form.merchant, form.amount, categories, history, lang]);
 
-  // Re-arm auto-pick only when the merchant itself changes — typing an amount
-  // after a manual pick must never clobber the user's choice.
   React.useEffect(() => { setManualCat(false); }, [form.merchant]);
 
   React.useEffect(() => {
@@ -69,27 +111,16 @@ export default function NewRequest(){
     }
   }, [suggestion, manualCat, form.category]);
 
-  const { data: budgets } = useQuery({ queryKey:["budgets"], queryFn: async()=>{
-    const { data, error } = await supabase.from("budgets").select("id,name").eq("status","active"); if(error) throw error; return data;
-  }});
+  const previewUrl = React.useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  React.useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
-  const mut = useMutation({ mutationFn: async()=>{
-    const parsed = schema.parse(form);
-    // create request first to get id
-    const { data, error } = await supabase.from("reimbursement_requests").insert({
-      budget_id: parsed.budget_id, requester_id: profile!.id, amount: Number(parsed.amount), category: parsed.category, merchant: parsed.merchant||null, description: parsed.description||null, due_date: parsed.due_date || null
-    }).select().single();
-    if(error) throw error;
-    // upload receipt if present
-    if(file && data){
-      const path = `${profile!.id}/${data.id}/${file.name}`;
-      const { error: upErr } = await supabase.storage.from("receipts").upload(path, file);
-      if(upErr) throw upErr;
-      const { error: updErr } = await supabase.from("reimbursement_requests").update({ receipt_url: path }).eq("id", data.id);
-      if(updErr) throw updErr;
-    }
-    return data;
-  }, onSuccess:()=>{ toast({title:t("new.submitted")}); nav("/requests"); }, onError:(e:Error)=> toast({title:t("new.failed"), description:e.message, variant:"destructive"}) });
+  const onFile = (f: File | null) => {
+    setErr(null);
+    if (!f) { setFile(null); return; }
+    if (f.size > 10 * 1024 * 1024) { setErr(t("new.fileTooBig")); return; }
+    if (!/^image\//.test(f.type) && f.type !== "application/pdf") { setErr(t("new.badFile")); return; }
+    setFile(f);
+  };
 
   const propose = useMutation({
     mutationFn: async (name: string) => {
@@ -107,47 +138,172 @@ export default function NewRequest(){
     propose.mutate(name);
   };
 
+  const mut = useMutation({ mutationFn: async()=>{
+    const parsed = schema.parse(form);
+    const { data, error } = await supabase.from("reimbursement_requests").insert({
+      budget_id: parsed.budget_id, requester_id: profile!.id, amount: Number(parsed.amount), category: parsed.category, merchant: parsed.merchant||null, description: parsed.description||null, due_date: parsed.due_date || null
+    }).select().single();
+    if(error) throw error;
+    if(file && data){
+      const path = `${profile!.id}/${data.id}/${file.name}`;
+      const { error: upErr } = await supabase.storage.from("receipts").upload(path, file);
+      if(upErr) throw upErr;
+      const { error: updErr } = await supabase.from("reimbursement_requests").update({ receipt_url: path }).eq("id", data.id);
+      if(updErr) throw updErr;
+    }
+    return data;
+  }, onSuccess:()=>{
+    try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    toast({title:t("new.submitted")}); nav("/requests");
+  }, onError:(e:Error)=> toast({title:t("new.failed"), description:e.message, variant:"destructive"}) });
+
+  const next = ()=>{
+    setStepErr(null);
+    if (step === 0 && !form.budget_id) { setStepErr(t("v.budgetRequired")); return; }
+    if (step === 1) {
+      if (!isValidMoney(form.amount.trim()) || !(Number(form.amount) > 0)) { setStepErr(t("v.amountGt")); return; }
+      if (!form.category) { setStepErr(t("v.categoryRequired")); return; }
+    }
+    setStep((s) => Math.min(2, s + 1));
+  };
+
   const onSubmit = (e:React.FormEvent)=>{
     e.preventDefault();
     try{ setErr(null); schema.parse(form); mut.mutate(); } catch(ex){ if(ex instanceof z.ZodError) setErr(ex.errors[0].message); else setErr((ex as Error).message); }
   };
 
-  return <div className="max-w-xl">
+  const setDue = (preset: number | "month") => {
+    const d = new Date();
+    if (preset === "month") d.setMonth(d.getMonth() + 1, 0);
+    else d.setDate(d.getDate() + preset);
+    setForm({ ...form, due_date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` });
+  };
+
+  const chosenBudget = budgets?.find((b) => b.id === form.budget_id);
+  const amountValid = isValidMoney(form.amount.trim()) && Number(form.amount) > 0;
+
+  return <div className="max-w-xl mx-auto">
     <h1 className="text-2xl font-bold mb-4">{t("new.title")}</h1>
-    <Card><CardHeader><CardTitle>{t("new.details")}</CardTitle></CardHeader><CardContent>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div><Label>{t("new.budget")}</Label><Select value={form.budget_id} onChange={e=>setForm({...form,budget_id:e.target.value})} required><option value="">{t("new.selectBudget")}</option>{budgets?.map(b=> <option key={b.id} value={b.id}>{b.name}</option>)}</Select></div>
-        <div><Label>{t("new.amount")}</Label><Input value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder={t("new.amountPh")} required /></div>
-        <div><Label>{t("new.category")}</Label><Select value={form.category} onChange={e=>{ setManualCat(true); setForm({...form,category:e.target.value}); }}>{categories.map((c)=><option key={c} value={c}>{c}</option>)}</Select></div>
-        {suggestion && (
-          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span>{t("match.suggested")}: <b>{suggestion.category}</b> ({suggestion.confidence}%)</span>
-              {suggestion.auto && <Badge variant="approved">{t("match.auto")}</Badge>}
-              {form.category !== suggestion.category && <Button size="sm" variant="outline" onClick={()=>{ setManualCat(true); setForm({...form,category:suggestion.category}); }}>{t("match.apply")}</Button>}
-            </div>
-            <div className="h-1.5 rounded bg-muted overflow-hidden"><div className="h-1.5 rounded bg-gradient-to-r from-blue-500 to-violet-500 transition-all" style={{ width: `${suggestion.confidence}%` }} /></div>
-            <ul className="text-xs text-muted-foreground space-y-0.5">{suggestion.reasons.map((r, i) => <li key={i}>• {r}</li>)}</ul>
+    {draftLoaded && (
+      <div className="mb-4 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm flex flex-wrap items-center gap-2">
+        <span>{t("new.draftRestored")}</span>
+        <Button size="sm" variant="ghost" onClick={discardDraft}>{t("new.discardDraft")}</Button>
+      </div>
+    )}
+    <div className="flex gap-1.5 mb-5">
+      {STEPS.map((s, i) => (
+        <button key={s} onClick={() => { if (i < step) setStep(i); }} disabled={i > step}
+          className={`flex-1 rounded-md px-2 py-2 text-xs font-medium transition-colors ${i < step ? "bg-primary/15 text-primary" : i === step ? "bg-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground"}`}>
+          <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] border border-current">{i < step ? <Check className="h-3 w-3" /> : i + 1}</span>
+          {t(s)}
+        </button>
+      ))}
+    </div>
+    <Card><CardHeader><CardTitle>{t(STEPS[step])}</CardTitle></CardHeader><CardContent>
+      {step === 0 && (
+        <div className="space-y-3">
+          <Label>{t("new.pickBudget")}</Label>
+          {(budgets?.length ?? 0) === 0 && <div className="text-sm text-muted-foreground">{t("new.noBudgets")}</div>}
+          <div className="grid gap-2 max-h-72 overflow-auto pr-1">
+            {budgets?.map((b) => {
+              const selected = form.budget_id === b.id;
+              return (
+                <button key={b.id} type="button" onClick={()=>{ setStepErr(null); setForm({...form,budget_id:b.id}); }}
+                  className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-left text-sm transition-all ${selected ? "border-primary bg-primary/5 shadow-sm" : "border-input hover:border-primary/50"}`}>
+                  <span className="font-medium">{b.name}</span>
+                  <span className="text-muted-foreground tabular whitespace-nowrap">{t("budgets.available")}: {formatMoney(Number(b.available_amount), b.currency)}</span>
+                </button>
+              );
+            })}
           </div>
-        )}
-        {form.merchant.trim() && suggestion && !suggestion.auto && suggestion.confidence <= 35 && !proposed && (
-          <div className="rounded-md border border-dashed p-3 text-sm space-y-2">
-            <div className="text-muted-foreground">{t("match.noMatch")}</div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input placeholder={t("match.proposePh")} value={proposal} onChange={(e)=>setProposal(e.target.value)} maxLength={30} />
-              <Button type="button" variant="outline" onClick={onPropose} disabled={propose.isPending}>{t("match.propose")}</Button>
-            </div>
-            {proposalErr && <div className="text-sm text-destructive">{proposalErr}</div>}
+          {stepErr && <div className="text-sm text-destructive">{stepErr}</div>}
+          <div className="flex justify-end"><Button onClick={next} disabled={(budgets?.length ?? 0) === 0}>{t("new.next")}</Button></div>
+        </div>
+      )}
+
+      {step === 1 && (
+        <div className="space-y-4">
+          <div>
+            <Label>{t("new.amount")}</Label>
+            <Input value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder={t("new.amountPh")} inputMode="decimal" />
+            {amountValid && <div className="mt-1 text-lg font-bold tabular text-gradient">{formatMoney(Number(form.amount))}</div>}
           </div>
-        )}
-        <div><Label>{t("new.merchant")}</Label><Input value={form.merchant} onChange={e=>setForm({...form,merchant:e.target.value})} placeholder={t("new.merchantPh")} /></div>
-        <div><Label>{t("new.description")}</Label><Textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder={t("new.descPh")} /></div>
-        <div><Label>{t("new.dueDate")}</Label><Input type="date" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})} /></div>
-        <div><Label>{t("new.receipt")}</Label><Input type="file" accept="image/*,application/pdf" onChange={e=>setFile(e.target.files?.[0]??null)} /></div>
-        {err && <div className="text-sm text-destructive">{err}</div>}
-        <Button type="submit" disabled={mut.isPending} className="w-full">{mut.isPending?t("new.submitting"):t("new.submit")}</Button>
-      </form>
+          <div>
+            <Label>{t("new.category")}</Label>
+            <Select value={form.category} onChange={e=>{ setManualCat(true); setForm({...form,category:e.target.value}); }}>{categories.map((c)=><option key={c} value={c}>{c}</option>)}</Select>
+          </div>
+          {suggestion && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span>{t("match.suggested")}: <b>{suggestion.category}</b> ({suggestion.confidence}%)</span>
+                {suggestion.auto && <Badge variant="approved">{t("match.auto")}</Badge>}
+                {form.category !== suggestion.category && <Button size="sm" variant="outline" onClick={()=>{ setManualCat(true); setForm({...form,category:suggestion.category}); }}>{t("match.apply")}</Button>}
+              </div>
+              <div className="h-1.5 rounded bg-muted overflow-hidden"><div className="h-1.5 rounded bg-gradient-to-r from-blue-500 to-violet-500 transition-all" style={{ width: `${suggestion.confidence}%` }} /></div>
+              <ul className="text-xs text-muted-foreground space-y-0.5">{suggestion.reasons.map((r, i) => <li key={i}>• {r}</li>)}</ul>
+            </div>
+          )}
+          {form.merchant.trim() && suggestion && !suggestion.auto && suggestion.confidence <= 35 && !proposed && (
+            <div className="rounded-md border border-dashed p-3 text-sm space-y-2">
+              <div className="text-muted-foreground">{t("match.noMatch")}</div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input placeholder={t("match.proposePh")} value={proposal} onChange={(e)=>setProposal(e.target.value)} maxLength={30} />
+                <Button type="button" variant="outline" onClick={onPropose} disabled={propose.isPending}>{t("match.propose")}</Button>
+              </div>
+              {proposalErr && <div className="text-sm text-destructive">{proposalErr}</div>}
+            </div>
+          )}
+          <div><Label>{t("new.merchant")}</Label><Input value={form.merchant} onChange={e=>setForm({...form,merchant:e.target.value})} placeholder={t("new.merchantPh")} maxLength={200} /></div>
+          <div>
+            <Label>{t("new.description")}</Label>
+            <Textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder={t("new.descPh")} maxLength={1000} />
+            <div className="mt-1 text-right text-xs text-muted-foreground tabular">{form.description.length}/1000</div>
+          </div>
+          <div>
+            <Label>{t("new.dueDate")}</Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              <Button type="button" size="sm" variant="outline" onClick={()=>setDue(0)}>{t("new.dueToday")}</Button>
+              <Button type="button" size="sm" variant="outline" onClick={()=>setDue(3)}>{t("new.due3")}</Button>
+              <Button type="button" size="sm" variant="outline" onClick={()=>setDue(7)}>{t("new.due7")}</Button>
+              <Button type="button" size="sm" variant="outline" onClick={()=>setDue("month")}>{t("new.dueMonth")}</Button>
+            </div>
+            <Input type="date" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})} />
+          </div>
+          {stepErr && <div className="text-sm text-destructive">{stepErr}</div>}
+          <div className="flex justify-between"><Button variant="outline" onClick={()=>setStep(0)}>{t("new.back")}</Button><Button onClick={next}>{t("new.next")}</Button></div>
+        </div>
+      )}
+
+      {step === 2 && (
+        <form onSubmit={onSubmit} className="space-y-4">
+          <h3 className="font-semibold">{t("new.reviewTitle")}</h3>
+          <dl className="rounded-lg border divide-y text-sm">
+            <div className="flex justify-between gap-3 p-3"><dt className="text-muted-foreground">{t("new.budget")}</dt><dd className="font-medium text-right">{chosenBudget?.name ?? "—"}</dd></div>
+            <div className="flex justify-between gap-3 p-3"><dt className="text-muted-foreground">{t("new.amount")}</dt><dd className="font-bold tabular text-right">{amountValid ? formatMoney(Number(form.amount)) : form.amount || "—"}</dd></div>
+            <div className="flex justify-between gap-3 p-3"><dt className="text-muted-foreground">{t("new.category")}</dt><dd className="font-medium">{form.category || "—"}</dd></div>
+            <div className="flex justify-between gap-3 p-3"><dt className="text-muted-foreground">{t("new.merchant")}</dt><dd className="font-medium text-right">{form.merchant || "—"}</dd></div>
+            {form.description && <div className="flex justify-between gap-3 p-3"><dt className="text-muted-foreground">{t("new.description")}</dt><dd className="text-right max-w-[60%]">{form.description}</dd></div>}
+            <div className="flex justify-between gap-3 p-3"><dt className="text-muted-foreground">{t("new.dueDate")}</dt><dd className="font-medium">{form.due_date ? formatDate(form.due_date, lang) : "—"}</dd></div>
+          </dl>
+          <div>
+            <Label>{t("new.receipt")}</Label>
+            <Input type="file" accept="image/*,application/pdf" onChange={e=>onFile(e.target.files?.[0]??null)} />
+            {file && previewUrl && (
+              <div className="mt-2 flex items-start gap-3 rounded-md border p-2">
+                {file.type.startsWith("image/") && <img src={previewUrl} alt={t("new.receiptPreview")} className="h-20 w-20 rounded object-cover border" />}
+                <div className="min-w-0 flex-1 text-sm">
+                  <div className="truncate font-medium">{file.name}</div>
+                  <div className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</div>
+                  <Button type="button" size="sm" variant="ghost" className="mt-1 h-7 px-2" onClick={()=>onFile(null)}>{t("new.removeFile")}</Button>
+                </div>
+              </div>
+            )}
+          </div>
+          {err && <div className="text-sm text-destructive">{err}</div>}
+          <div className="flex justify-between"><Button type="button" variant="outline" onClick={()=>setStep(1)}>{t("new.back")}</Button><Button type="submit" disabled={mut.isPending}>{mut.isPending?t("new.submitting"):t("new.submit")}</Button></div>
+        </form>
+      )}
     </CardContent></Card>
   </div>;
 }
