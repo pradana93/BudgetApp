@@ -212,7 +212,15 @@ export default function Admin() {
       const total = Object.values(counts).reduce((s, n) => s + (Number(n) || 0), 0);
       toast({ title: `${t("admin.resetDone")} — ${total} rows` });
     },
-    onError: (e: Error) => toast({ title: t("admin.resetFailed"), description: e.message, variant: "destructive" }),
+    onError: (e: unknown) => {
+      const err = e as { message?: string; code?: string; hint?: string | null; details?: string | null };
+      const extra = [err.code, err.hint ?? err.details].filter(Boolean).join(" • ");
+      toast({
+        title: t("admin.resetFailed"),
+        description: [err.message, extra].filter(Boolean).join(" — ") || String(e),
+        variant: "destructive",
+      });
+    },
   });
 
   const bulkReconcile = async (threshold: number) => {    const targets = approved.filter((r) => scoreOf(r).score >= threshold);
