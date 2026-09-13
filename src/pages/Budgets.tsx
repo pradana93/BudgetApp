@@ -4,34 +4,24 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { formatMoney, isValidMoney } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import { budgetHealth } from "@/lib/insights";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
 import { Wallet } from "lucide-react";
-import { getBudgetSchema } from "@/schemas/budget";
 
 export default function Budgets(){
   useRealtime();
   const { profile } = useSession();
   const { t } = useLang();
+  const nav = useNavigate();
   const isOwner = profile?.role==="owner";
   const qc=useQueryClient(); const { toast }=useToast();
-  const [open,setOpen]=React.useState(false);
-  const [form,setForm]=React.useState({ name:"", total_amount:"", currency:"IDR", period_start:"", period_end:"" });
-  const [fieldErrs,setFieldErrs]=React.useState<Record<string, string[]>>({});
-
-  const schema = React.useMemo(
-    () => getBudgetSchema({ nameRequired: t("v.nameRequired"), invalidAmount: t("v.invalidAmount"), endGteStart: t("v.endGteStart") }),
-    [t]
-  );
 
   const { data, isLoading } = useQuery({ queryKey:["budgets"], queryFn: async()=>{
     const { data, error } = await supabase.from("budgets").select("*").order("created_at",{ascending:false}); if(error) throw error; return data;
@@ -48,12 +38,6 @@ export default function Budgets(){
     atRisk: { variant: "pending" as const, label: t("health.atRisk") },
     over: { variant: "destructive" as const, label: t("health.over") },
   };
-  const mut = useMutation({ mutationFn: async()=>{
-    const parsed = schema.parse({ ...form });
-    const { error } = await supabase.from("budgets").insert({ name: parsed.name, total_amount: Number(parsed.total_amount), currency: parsed.currency ?? "IDR", period_start: parsed.period_start || null, period_end: parsed.period_end || null, owner_id: profile!.id });
-    if(error) throw error;
-  }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["budgets"]}); setOpen(false); setFieldErrs({}); setForm({ name:"", total_amount:"", currency:"IDR", period_start:"", period_end:"" }); toast({title:t("budgets.created")}); }, onError:(e:Error)=> toast({title:t("budgets.failed"), description:e.message, variant:"destructive"}) });
-
   const statusMut = useMutation({ mutationFn: async({ id, status }: { id: string; status: "active" | "closed" })=>{
     const { error } = await supabase.from("budgets").update({ status }).eq("id", id);
     if(error) throw error;
@@ -82,23 +66,11 @@ export default function Budgets(){
     URL.revokeObjectURL(url);
   };
 
-  const onCreate = ()=>{
-    const r = schema.safeParse({...form});
-    if (!r.success) { setFieldErrs(r.error.flatten().fieldErrors as Record<string, string[]>); return; }
-    setFieldErrs({});
-    mut.mutate();
-  };
-
-  const bump = (n: number) => setForm({ ...form, total_amount: String((Number(form.total_amount) || 0) + n) });
-  const periodDays = form.period_start && form.period_end
-    ? Math.max(0, Math.round((new Date(form.period_end).getTime() - new Date(form.period_start).getTime()) / 86400000))
-    : null;
-
   return <div className="space-y-4">
     <div className="flex flex-wrap justify-between items-center gap-2"><h1 className="text-2xl font-bold">{t("budgets.title")}</h1><div className="flex gap-2">
       <Input placeholder={t("budgets.searchPh")} value={bq} onChange={(e)=>setBq(e.target.value)} className="max-w-[200px]" />
       <Button variant="outline" onClick={exportCsv}>{t("budgets.export")}</Button>
-      {isOwner && <Button onClick={()=>setOpen(true)}>{t("budgets.new")}</Button>}
+          {isOwner && <Button onClick={()=>nav("/budgets/new")}>{t("budgets.new")}</Button>}
     </div></div>
     <Card><CardHeader><CardTitle>{t("budgets.all")}</CardTitle></CardHeader><CardContent>
       {isLoading ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}</div>
@@ -106,7 +78,7 @@ export default function Budgets(){
         <div className="flex flex-col items-center gap-3 py-10 text-center animate-fade-up">
           <span className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-3 text-white shadow-lg"><Wallet className="h-6 w-6" /></span>
           <div className="font-medium">{t("budgets.noBudgets")}</div>
-          {isOwner && <Button onClick={()=>setOpen(true)}>{t("budgets.new")}</Button>}
+      {isOwner && <Button onClick={()=>nav("/budgets/new")}>{t("budgets.new")}</Button>}
         </div>
       ) : (
       <Table className="min-w-[720px]"><TableHeader><TableRow><TableHead>{t("budgets.name")}</TableHead><TableHead>{t("budgets.total")}</TableHead><TableHead>{t("budgets.allocated")}</TableHead><TableHead>{t("budgets.available")}</TableHead><TableHead>{t("budgets.usage")}</TableHead><TableHead>{t("budgets.status")}</TableHead>{isOwner && <TableHead>{t("budgets.action")}</TableHead>}</TableRow></TableHeader>
@@ -116,50 +88,5 @@ export default function Budgets(){
       {filteredBudgets?.length===0 && <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center text-muted-foreground">{t("req.noMatch")}</TableCell></TableRow>}
       </TableBody></Table>)}
     </CardContent></Card>
-
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogHeader>
-        <div className="flex items-center gap-3">
-          <span className="rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 text-white shadow-md shrink-0"><Wallet className="h-5 w-5" /></span>
-          <div className="min-w-0">
-            <DialogTitle>{t("budgets.dialogTitle")}</DialogTitle>
-            <DialogDescription>{t("budgets.dialogSub")}</DialogDescription>
-          </div>
-        </div>
-      </DialogHeader>
-      <DialogContent>
-        <div className="grid gap-4">
-          <div><Label>{t("budgets.name")}</Label><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder={t("budgets.phName")} maxLength={200} />
-            {fieldErrs.name?.[0] && <div className="text-sm text-destructive mt-1">{fieldErrs.name[0]}</div>}</div>
-          <div>
-            <div className="flex items-end justify-between gap-2">
-              <Label className="flex-1 space-y-2">{t("budgets.fTotalAmt")} ({form.currency})<Input value={form.total_amount} onChange={e=>setForm({...form,total_amount:e.target.value})} placeholder={t("budgets.phTotal")} inputMode="decimal" /></Label>
-              <span className="flex rounded-lg border border-input overflow-hidden shrink-0" role="group" aria-label={t("budgets.currency")}>
-                {(["IDR", "USD"] as const).map((c) => (
-                  <button key={c} type="button" onClick={()=>setForm({...form,currency:c})}
-                    className={`h-10 px-3 text-sm font-medium transition-colors ${form.currency === c ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}>{c}</button>
-                ))}
-              </span>
-            </div>
-            {fieldErrs.total_amount?.[0] && <div className="text-sm text-destructive mt-1">{fieldErrs.total_amount[0]}</div>}
-            {form.currency === "IDR" && <div className="flex gap-2 mt-2">
-              {[1000000, 5000000, 10000000].map((n) => <Button key={n} type="button" size="sm" variant="outline" onClick={()=>bump(n)}>+{(n / 1000000).toLocaleString()} jt</Button>)}
-            </div>}
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 gap-3"><div><Label>{t("budgets.fStart")}</Label><Input type="date" value={form.period_start} onChange={e=>setForm({...form,period_start:e.target.value})} /></div><div><Label>{t("budgets.fEnd")}</Label><Input type="date" value={form.period_end} onChange={e=>setForm({...form,period_end:e.target.value})} />
-            {fieldErrs.period_end?.[0] && <div className="text-sm text-destructive mt-1">{fieldErrs.period_end[0]}</div>}</div></div>
-          {isValidMoney(form.total_amount) && (
-            <div className="rounded-xl bg-gradient-to-r from-blue-500/10 to-violet-500/10 border border-primary/20 px-4 py-3 flex items-baseline justify-between gap-2">
-              <span className="text-xl font-bold tabular text-gradient">{formatMoney(Number(form.total_amount), form.currency || "IDR")}</span>
-              {periodDays !== null && <span className="text-sm text-muted-foreground whitespace-nowrap">• {t("budgets.periodDays", { n: periodDays })}</span>}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-      <DialogFooter>
-        <Button variant="outline" onClick={()=>setOpen(false)} className="flex-1 sm:flex-none">{t("common.cancel")}</Button>
-        <Button onClick={onCreate} disabled={mut.isPending} className="flex-1 sm:flex-none sm:min-w-[120px]">{mut.isPending?t("budgets.creating"):t("budgets.create")}</Button>
-      </DialogFooter>
-    </Dialog>
   </div>;
 }

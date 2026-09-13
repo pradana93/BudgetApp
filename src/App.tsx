@@ -9,6 +9,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
 import Budgets from "@/pages/Budgets";
+import NewBudget from "@/pages/NewBudget";
 import BudgetDetail from "@/pages/BudgetDetail";
 import Requests from "@/pages/Requests";
 import NewRequest from "@/pages/NewRequest";
@@ -31,6 +32,7 @@ export default function App(){
             <Route path="/register" element={<Register />} />
             <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
             <Route path="/budgets" element={<ProtectedRoute><Layout><Budgets /></Layout></ProtectedRoute>} />
+            <Route path="/budgets/new" element={<ProtectedRoute ownerOnly><Layout><NewBudget /></Layout></ProtectedRoute>} />
             <Route path="/budgets/:id" element={<ProtectedRoute><Layout><BudgetDetail /></Layout></ProtectedRoute>} />
             <Route path="/requests" element={<ProtectedRoute><Layout><Requests /></Layout></ProtectedRoute>} />
             <Route path="/requests/new" element={<ProtectedRoute><Layout><NewRequest /></Layout></ProtectedRoute>} />

@@ -90,7 +90,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const actions: Item[] = [
     { id: "a-newreq", group: "cmd.actions", label: t("cmd.newRequest"), icon: Plus, run: () => go("/requests/new") },
-    { id: "a-newbud", group: "cmd.actions", label: t("cmd.newBudget"), icon: Plus, run: () => go("/budgets") },
+    { id: "a-newbud", group: "cmd.actions", label: t("cmd.newBudget"), icon: Plus, run: () => go("/budgets/new") },
     {
       id: "a-lang", group: "cmd.actions", label: t("cmd.switchLang"), icon: Languages,
       run: () => { setLang(lang === "en" ? "id" : "en"); onClose(); },
