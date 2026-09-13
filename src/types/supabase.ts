@@ -44,8 +44,8 @@ export type Database = {
         Update: never;
       };
       personal_categories: {
-        Row: { id: string; user_id: string; name: string; color: string; created_at: string };
-        Insert: { id?: string; user_id: string; name: string; color?: string };
+        Row: { id: string; user_id: string; name: string; color: string; monthly_budget: number | null; created_at: string };
+        Insert: { id?: string; user_id: string; name: string; color?: string; monthly_budget?: number | null };
         Update: Partial<Database["public"]["Tables"]["personal_categories"]["Insert"]>;
       };
       personal_notes: {
