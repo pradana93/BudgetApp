@@ -102,5 +102,6 @@ export default function Settings(){
       <Button variant="outline" onClick={exportData} disabled={exporting}>{exporting ? t("common.loading") : t("set.export")}</Button>
     </CardContent></Card>
     <Button variant="destructive" onClick={()=>supabase.auth.signOut()}>{t("set.signOut")}</Button>
+    <div className="text-xs text-muted-foreground">Build {typeof __GIT_SHA__ !== "undefined" ? __GIT_SHA__.slice(0, 7) : "local"}</div>
   </div>;
 }
