@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
-import { useCategories } from "@/hooks/useCategories";
+import { useCategories, normalizeCategory } from "@/hooks/useCategories";
 import { suggestCategory } from "@/lib/matcher";
 import { Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,9 @@ export default function NewRequest(){
   }, [categories]);
 
   const [manualCat, setManualCat] = React.useState(false);
+  const [proposal, setProposal] = React.useState("");
+  const [proposed, setProposed] = React.useState(false);
+  const [proposalErr, setProposalErr] = React.useState<string | null>(null);
 
   const { data: history } = useQuery({
     queryKey: ["my-history"],
@@ -88,6 +91,22 @@ export default function NewRequest(){
     return data;
   }, onSuccess:()=>{ toast({title:t("new.submitted")}); nav("/requests"); }, onError:(e:Error)=> toast({title:t("new.failed"), description:e.message, variant:"destructive"}) });
 
+  const propose = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from("category_proposals").insert({ name, merchant: form.merchant.trim(), requester_id: profile!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => { setProposed(true); setProposal(""); setProposalErr(null); toast({ title: t("match.proposed") }); },
+    onError: (e: Error) => toast({ title: t("new.failed"), description: e.message, variant: "destructive" }),
+  });
+
+  const onPropose = () => {
+    const name = normalizeCategory(proposal || form.merchant);
+    if (!name) { setProposalErr(t("match.invalidName")); return; }
+    setProposalErr(null);
+    propose.mutate(name);
+  };
+
   const onSubmit = (e:React.FormEvent)=>{
     e.preventDefault();
     try{ setErr(null); schema.parse(form); mut.mutate(); } catch(ex){ if(ex instanceof z.ZodError) setErr(ex.errors[0].message); else setErr((ex as Error).message); }
@@ -110,6 +129,16 @@ export default function NewRequest(){
             </div>
             <div className="h-1.5 rounded bg-muted overflow-hidden"><div className="h-1.5 rounded bg-gradient-to-r from-blue-500 to-violet-500 transition-all" style={{ width: `${suggestion.confidence}%` }} /></div>
             <ul className="text-xs text-muted-foreground space-y-0.5">{suggestion.reasons.map((r, i) => <li key={i}>• {r}</li>)}</ul>
+          </div>
+        )}
+        {form.merchant.trim() && suggestion && !suggestion.auto && suggestion.confidence <= 35 && !proposed && (
+          <div className="rounded-md border border-dashed p-3 text-sm space-y-2">
+            <div className="text-muted-foreground">{t("match.noMatch")}</div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input placeholder={t("match.proposePh")} value={proposal} onChange={(e)=>setProposal(e.target.value)} maxLength={30} />
+              <Button type="button" variant="outline" onClick={onPropose} disabled={propose.isPending}>{t("match.propose")}</Button>
+            </div>
+            {proposalErr && <div className="text-sm text-destructive">{proposalErr}</div>}
           </div>
         )}
         <div><Label>{t("new.merchant")}</Label><Input value={form.merchant} onChange={e=>setForm({...form,merchant:e.target.value})} placeholder={t("new.merchantPh")} /></div>

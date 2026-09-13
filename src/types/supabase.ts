@@ -29,9 +29,14 @@ export type Database = {
         Update: never;
       };
       notifications: {
-        Row: { id: string; user_id: string; type: "new_request" | "request_approved" | "request_rejected" | "request_reconciled"; title: string; body: string | null; link: string | null; is_read: boolean; created_at: string };
+        Row: { id: string; user_id: string; type: "new_request" | "request_approved" | "request_rejected" | "request_reconciled" | "category_decision"; title: string; body: string | null; link: string | null; is_read: boolean; created_at: string };
         Insert: { id?: string; user_id: string; type: Database["public"]["Tables"]["notifications"]["Row"]["type"]; title: string; body?: string | null; link?: string | null; is_read?: boolean };
         Update: { is_read?: boolean };
+      };
+      category_proposals: {
+        Row: { id: string; requester_id: string; name: string; merchant: string | null; status: "pending" | "approved" | "rejected"; reviewed_by: string | null; reviewed_at: string | null; created_at: string };
+        Insert: { id?: string; requester_id: string; name: string; merchant?: string | null; status?: Database["public"]["Tables"]["category_proposals"]["Row"]["status"] };
+        Update: { status?: Database["public"]["Tables"]["category_proposals"]["Row"]["status"]; reviewed_by?: string | null; reviewed_at?: string | null };
       };
       categories: {
         Row: { name: string; created_at: string };

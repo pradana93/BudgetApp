@@ -105,6 +105,46 @@ export default function Admin() {
     addCat.mutate(name);
   };
 
+  type Proposal = { id: string; requester_id: string; name: string; merchant: string | null; status: string; created_at: string };
+  const { data: proposals } = useQuery({
+    queryKey: ["cat-proposals"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("category_proposals").select("*").order("created_at", { ascending: false }).limit(50);
+      if (error) throw error;
+      return (data ?? []) as Proposal[];
+    },
+  });
+  const pendingProps = React.useMemo(() => (proposals ?? []).filter((p) => p.status === "pending"), [proposals]);
+  const userEmail = (id: string) => users?.find((u) => u.id === id)?.email ?? id.slice(0, 8);
+
+  const notifyRequester = async (userId: string, title: string, body: string) => {
+    await supabase.from("notifications").insert({ user_id: userId, type: "category_decision", title, body, link: "/requests/new" });
+  };
+
+  const approveProp = useMutation({
+    mutationFn: async (p: Proposal) => {
+      const { error: e1 } = await supabase.from("categories").upsert({ name: p.name }, { onConflict: "name" });
+      if (e1) throw e1;
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error: e2 } = await supabase.from("category_proposals").update({ status: "approved", reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() }).eq("id", p.id);
+      if (e2) throw e2;
+      await notifyRequester(p.requester_id, t("admin.propApproved"), p.name);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cat-proposals"] }); qc.invalidateQueries({ queryKey: ["categories"] }); toast({ title: t("admin.propApproved") }); },
+    onError: (e: Error) => toast({ title: t("admin.propFailed"), description: e.message, variant: "destructive" }),
+  });
+
+  const rejectProp = useMutation({
+    mutationFn: async (p: Proposal) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from("category_proposals").update({ status: "rejected", reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() }).eq("id", p.id);
+      if (error) throw error;
+      await notifyRequester(p.requester_id, t("admin.propRejected"), p.name);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cat-proposals"] }); toast({ title: t("admin.propRejected") }); },
+    onError: (e: Error) => toast({ title: t("admin.propFailed"), description: e.message, variant: "destructive" }),
+  });
+
   const pending = (requests ?? []).filter((r) => r.status === "pending");
   const totalBudget = (budgets ?? []).reduce((s, b) => s + Number(b.total_amount), 0);
   const totalAllocated = (budgets ?? []).reduce((s, b) => s + Number(b.allocated_amount), 0);
@@ -293,6 +333,23 @@ export default function Admin() {
           {catErr
             ? <div className="text-sm text-destructive mt-2">{catErr}</div>
             : <div className="text-xs text-muted-foreground mt-2">{t("admin.catsHint")}</div>}
+          <div className="mt-4 border-t pt-3">
+            <div className="text-sm font-semibold mb-2">{t("admin.props")} {pendingProps.length > 0 && <Badge variant="pending" className="ml-1">{pendingProps.length}</Badge>}</div>
+            {pendingProps.length === 0 ? <div className="text-xs text-muted-foreground">{t("admin.noProps")}</div> :
+            <div className="space-y-2">
+              {pendingProps.map((p) => (
+                <div key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-md border p-2 text-sm">
+                  <span className="font-medium">{p.name}</span>
+                  {p.merchant && <span className="text-muted-foreground">· {p.merchant}</span>}
+                  <span className="text-xs text-muted-foreground">{t("admin.proposedBy", { email: userEmail(p.requester_id) })}</span>
+                  <span className="flex gap-2 sm:ml-auto">
+                    <Button size="sm" onClick={() => approveProp.mutate(p)} disabled={approveProp.isPending}>{t("admin.approveProp")}</Button>
+                    <Button size="sm" variant="destructive" onClick={() => rejectProp.mutate(p)} disabled={rejectProp.isPending}>{t("admin.rejectProp")}</Button>
+                  </span>
+                </div>
+              ))}
+            </div>}
+          </div>
         </CardContent>
       </Card>
 

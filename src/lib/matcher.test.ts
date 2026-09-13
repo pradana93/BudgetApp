@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { suggestCategory, reconciliationScore } from "./matcher";
+import { normalizeCategory } from "../hooks/useCategories";
 
 const CATS = ["groceries", "transport", "dining", "utilities", "health", "other"];
 
@@ -79,6 +80,16 @@ describe("suggestCategory", () => {
     });
     expect(s?.category).toBe("health");
     expect(s?.reasons[0]).toContain("Kata kunci");
+  });
+});
+
+describe("normalizeCategory", () => {
+  it("slugs names and rejects invalid ones", () => {
+    expect(normalizeCategory("New Category")).toBe("new-category");
+    expect(normalizeCategory("  TRAVEL  ")).toBe("travel");
+    expect(normalizeCategory("a")).toBe(null);
+    expect(normalizeCategory("has spaces and $ymbols!")).toBe(null);
+    expect(normalizeCategory("x".repeat(31))).toBe(null);
   });
 });
 
