@@ -118,7 +118,7 @@ export default function Budgets(){
     </CardContent></Card>
 
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogHeader className="pb-3 border-b border-border/60 mb-1">
+      <DialogHeader>
         <div className="flex items-center gap-3">
           <span className="rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 text-white shadow-md shrink-0"><Wallet className="h-5 w-5" /></span>
           <div className="min-w-0">
@@ -156,7 +156,7 @@ export default function Budgets(){
           )}
         </div>
       </DialogContent>
-      <DialogFooter className="sticky bottom-0 bg-background/95 backdrop-blur border-t border-border/60 gap-2">
+      <DialogFooter>
         <Button variant="outline" onClick={()=>setOpen(false)} className="flex-1 sm:flex-none">{t("common.cancel")}</Button>
         <Button onClick={onCreate} disabled={mut.isPending} className="flex-1 sm:flex-none sm:min-w-[120px]">{mut.isPending?t("budgets.creating"):t("budgets.create")}</Button>
       </DialogFooter>
