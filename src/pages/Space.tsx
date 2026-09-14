@@ -220,7 +220,7 @@ export default function Space() {
     await new Promise((r) => setTimeout(r, 300));
   }, [qc, profile]);
 
-  return <PullToRefresh onRefresh={refresh}><div className="space-y-4">
+  return <PullToRefresh onRefresh={refresh}><div className="space-y-3">
     {/* Page Header — matches Budgets/Requests pattern */}
     <div className="flex flex-wrap justify-between items-center gap-2">
       <h1 className="text-2xl font-bold">Personal Ledger</h1>
@@ -233,22 +233,22 @@ export default function Space() {
     {/* Stats Summary — inside Card like Dashboard */}
     <Card>
       <CardHeader className="pb-3"><CardTitle className="text-sm">This Month</CardTitle></CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="h-3 w-3" />Spent</div>
-            <div className="text-lg font-bold tabular mt-0.5">{formatMoney(monthTotals.exp.toNumber())}</div>
-            <div className="text-[11px] text-muted-foreground">{monthTotals.expN} transactions</div>
+      <CardContent className="pt-2">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 p-3 border border-rose-100 dark:border-rose-900/30">
+            <div className="text-[10px] sm:text-xs text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1"><TrendingDown className="h-3 w-3" />Spent</div>
+            <div className="text-sm sm:text-base font-bold tabular text-rose-700 dark:text-rose-300 mt-0.5 leading-tight">{formatMoney(monthTotals.exp.toNumber())}</div>
+            <div className="text-[10px] text-rose-500/60 mt-0.5">{monthTotals.expN} tx</div>
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" />Earned</div>
-            <div className="text-lg font-bold tabular mt-0.5">{formatMoney(monthTotals.inc.toNumber())}</div>
-            <div className="text-[11px] text-muted-foreground">{monthTotals.incN} transactions</div>
+          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 p-3 border border-emerald-100 dark:border-emerald-900/30">
+            <div className="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1"><TrendingUp className="h-3 w-3" />Earned</div>
+            <div className="text-sm sm:text-base font-bold tabular text-emerald-700 dark:text-emerald-300 mt-0.5 leading-tight">{formatMoney(monthTotals.inc.toNumber())}</div>
+            <div className="text-[10px] text-emerald-500/60 mt-0.5">{monthTotals.incN} tx</div>
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1"><Sparkles className="h-3 w-3" />Net Balance</div>
-            <div className="text-lg font-bold tabular mt-0.5">{formatMoney(sums.bal.toNumber())}</div>
-            <div className="text-[11px] text-muted-foreground">{accounts?.length ?? 0} ledgers • {formatMoney(totalBalance.toNumber())} total</div>
+          <div className="rounded-xl bg-violet-50 dark:bg-violet-950/30 p-3 border border-violet-100 dark:border-violet-900/30">
+            <div className="text-[10px] sm:text-xs text-violet-600 dark:text-violet-400 font-medium flex items-center gap-1"><Sparkles className="h-3 w-3" />Balance</div>
+            <div className="text-sm sm:text-base font-bold tabular text-violet-700 dark:text-violet-300 mt-0.5 leading-tight">{formatMoney(sums.bal.toNumber())}</div>
+            <div className="text-[10px] text-violet-500/60 mt-0.5">{accounts?.length ?? 0} ledgers</div>
           </div>
         </div>
       </CardContent>
@@ -289,7 +289,7 @@ export default function Space() {
 
     {/* Transactions — inside Card like Requests */}
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <CardTitle className="text-sm">Transactions</CardTitle>
         <div className="flex flex-wrap gap-2 mt-2">
           <div className="relative">
@@ -312,9 +312,9 @@ export default function Space() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="space-y-2">{[0,1,2,3].map(i => <div key={i} className="skeleton h-12" />)}</div>
+          <div className="space-y-1.5">{[0,1,2,3].map(i => <div key={i} className="skeleton h-[52px]" />)}</div>
         ) : grouped.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-10 text-center animate-fade-up">
+          <div className="flex flex-col items-center gap-3 py-8 text-center animate-fade-up">
             <span className="rounded-2xl bg-gradient-to-br from-violet-500 to-blue-600 p-3 text-white shadow-lg"><Wallet className="h-6 w-6" /></span>
             <div className="font-medium">No transactions this month</div>
             <div className="text-sm text-muted-foreground">Track spending, income & transfers between ledgers</div>
@@ -325,7 +325,7 @@ export default function Space() {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {grouped.map(([date, items]) => {
               const d = new Date(date);
               const label = isNaN(d.getTime()) ? date : d.toLocaleDateString(dateLocale(lang), { weekday: "long", day: "numeric", month: "short", year: "numeric" });
@@ -335,7 +335,7 @@ export default function Space() {
               }, 0);
               return (
                 <div key={date}>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
                     <span className="h-px flex-1 bg-border" />
                     <span className="text-xs text-muted-foreground tabular">{items.length} • {dayTotal >= 0 ? "+" : ""}{formatMoney(Math.abs(dayTotal))}</span>
@@ -351,11 +351,11 @@ export default function Space() {
                       const amtColor = isTransfer ? "text-blue-600" : e.direction === "income" ? "text-emerald-600" : "text-rose-600";
                       return (
                         <SwipeRow key={e.id} actions={[{ label: "Delete", kind: "destructive", onClick: () => setConfirmDelete(e.id) }]}>
-                        <div className="flex items-center gap-3 py-2 px-1 rounded-lg hover:bg-muted/30 transition-colors group cursor-pointer" onClick={() => openEdit(e)}>
-                          <span className={cn("h-9 w-9 rounded-lg flex items-center justify-center text-white shrink-0 bg-gradient-to-br shadow-sm", iconGrad)}><Icon className="h-4 w-4" /></span>
+                        <div className="flex items-center gap-2.5 py-1.5 px-1 rounded-lg hover:bg-muted/30 active:bg-muted/50 transition-colors group cursor-pointer" onClick={() => openEdit(e)}>
+                          <span className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white shrink-0 bg-gradient-to-br shadow-sm", iconGrad)}><Icon className="h-3.5 w-3.5" /></span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-medium text-sm truncate">{e.title}</span>
+                              <span className="font-medium text-[13px] truncate">{e.title}</span>
                               {isTransfer && <Badge variant="secondary" className="text-[9px] h-4 px-1 shrink-0">transfer</Badge>}
                             </div>
                             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
@@ -367,7 +367,7 @@ export default function Space() {
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className={cn("font-semibold text-sm tabular", amtColor)}>{e.direction === "expense" ? "−" : e.direction === "income" ? "+" : ""}{formatMoney(Number(e.amount ?? 0))}</div>
+                            <div className={cn("font-semibold text-[13px] tabular", amtColor)}>{e.direction === "expense" ? "−" : e.direction === "income" ? "+" : ""}{formatMoney(Number(e.amount ?? 0))}</div>
                             <div className="text-[11px] text-muted-foreground mt-0.5">{new Date(e.entry_date).toLocaleDateString(dateLocale(lang), { day:"2-digit", month:"short" })}</div>
                           </div>
                           <button onClick={(ev) => { ev.stopPropagation(); setConfirmDelete(e.id); }} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3.5 w-3.5" /></button>
