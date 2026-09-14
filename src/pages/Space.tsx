@@ -119,7 +119,7 @@ export default function Space() {
       if (e.entry_date.slice(0,7) !== curKey) return false;
       if (catFilter !== "all" && (e.category_id ?? "none") !== catFilter) return false;
       if (accFilter !== "all" && e.account_id !== accFilter && e.transfer_to_account_id !== accFilter) return false;
-      if (needle && !`${e.title} ${e.body} ${catById(e.category_id)?.name ?? ""}`.toLowerCase().includes(needle)) return false;
+      if (needle && !`${e.title} ${e.body} ${(cats ?? []).find((c) => c.id === e.category_id)?.name ?? ""}`.toLowerCase().includes(needle)) return false;
       return true;
     });
   }, [entries, curKey, catFilter, accFilter, q, cats]);

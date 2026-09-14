@@ -21,11 +21,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!session?.user) { setProfile(null); setLoading(false); return; }
     (async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
-      if (data) setProfile(data as Profile);
-      // fallback to JWT role if not found
-      else setProfile({ id: session.user.id, email: session.user.email ?? "", role: (session.user.user_metadata?.role as "owner"|"member") ?? "member", display_name: null, avatar_url: null });
-      setLoading(false);
+      try {
+        const { data } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
+        if (data) setProfile(data as Profile);
+        else setProfile({ id: session.user.id, email: session.user.email ?? "", role: (session.user.user_metadata?.role as "owner"|"member") ?? "member", display_name: null, avatar_url: null });
+      } catch {
+        setProfile({ id: session.user.id, email: session.user.email ?? "", role: (session.user.user_metadata?.role as "owner"|"member") ?? "member", display_name: null, avatar_url: null });
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [session, nonce]);
 

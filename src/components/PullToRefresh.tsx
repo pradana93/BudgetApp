@@ -24,7 +24,7 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
     };
   }, []);
 
-  const setPullDOM = (p: number) => {
+  const setPullDOM = React.useCallback((p: number) => {
     pullRef.current = p;
     const ind = indicatorRef.current;
     const ic = iconRef.current;
@@ -51,7 +51,7 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
         }
       }
     }
-  };
+  }, [refreshing]);
 
   React.useEffect(() => {
     const el = wrapRef.current;
@@ -107,7 +107,7 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
       el.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchend", onTouchEnd);
     };
-  }, [refreshing, onRefresh]);
+  }, [refreshing, onRefresh, setPullDOM]);
 
   React.useEffect(() => {
     const ind = indicatorRef.current;
@@ -115,7 +115,7 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
     ind.style.transition = "transform 420ms cubic-bezier(0.22,1,0.36,1), opacity 260ms ease";
     if (refreshing) setPullDOM(56);
     else if (pullRef.current === 0) setPullDOM(0);
-  }, [refreshing]);
+  }, [refreshing, setPullDOM]);
 
   return (
     <div ref={wrapRef} className="relative" style={{ overscrollBehaviorY: "contain", touchAction: "pan-y" }}>

@@ -26,7 +26,7 @@ export default function Login() {
   );
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "owner@budgetapp.local", password: "password123" },
+    defaultValues: { email: "", password: "" },
   });
 
   React.useEffect(() => {
