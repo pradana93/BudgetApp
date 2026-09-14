@@ -14,10 +14,9 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useCountUp } from "@/hooks/useCountUp";
 import { achievementsFor, achMeta, isUnlocked, levelOf, xpOf } from "@/lib/gamify";
-import { answerQuestion } from "@/lib/advisor";
-import { useAiAssist } from "@/hooks/useAiAssist";
 import { dateLocale, timeAgo } from "@/lib/datetime";
-import { Wallet, TrendingUp, Clock, ArrowDownLeft, ArrowUpRight, Receipt, Trophy, Sparkles } from "lucide-react";
+import { Wallet, TrendingUp, Clock, ArrowDownLeft, ArrowUpRight, Receipt, Trophy } from "lucide-react";
+import AskBudgetApp from "@/components/AskBudgetApp";
 
 export default function Dashboard(){
   useRealtime();
@@ -42,38 +41,23 @@ export default function Dashboard(){
 
   const myUnlocks = React.useMemo(() => (profile ? achievementsFor(requests ?? [], profile.id) : []), [requests, profile]);  const myXp = profile ? xpOf(requests ?? [], profile.id) : 0;
   const myLvl = levelOf(myXp);
-  const [askQ, setAskQ] = React.useState("");
-  const [answer, setAnswer] = React.useState<{ text: string; ai: boolean } | null>(null);
-  const { ask, loading: aiAsking } = useAiAssist();
-
-  const onAsk = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = askQ.trim();
-    if (!q || aiAsking) return;
-    const r = await ask(q, () =>
-      answerQuestion(
-        q,
-        {
-          budgets: (budgets ?? []).map((b) => ({
-            name: b.name,
-            total_amount: b.total_amount,
-            allocated_amount: b.allocated_amount,
-            available_amount: b.available_amount,
-            currency: b.currency,
-          })),
-          requests: (requests ?? []).map((x) => ({
-            amount: x.amount,
-            category: x.category,
-            status: x.status,
-            merchant: x.merchant,
-            created_at: x.created_at,
-          })),
-        },
-        lang
-      )
-    );
-    setAnswer(r.text ? r : { text: t("ask.noAnswer"), ai: false });
-  };
+  const askCtx = React.useMemo(() => ({
+    budgets: (budgets ?? []).map((b) => ({
+      name: b.name,
+      total_amount: b.total_amount,
+      allocated_amount: b.allocated_amount,
+      available_amount: b.available_amount,
+      currency: b.currency,
+      period_end: (b as Record<string, unknown>).period_end as string | null | undefined,
+    })),
+    requests: (requests ?? []).map((x) => ({
+      amount: x.amount,
+      category: x.category,
+      status: x.status,
+      merchant: x.merchant,
+      created_at: x.created_at,
+    })),
+  }), [budgets, requests]);
   React.useEffect(() => {
     if (!profile || !requests || requests.length === 0) return;
     const ids = myUnlocks.filter(isUnlocked).map((u) => u.id);
@@ -267,18 +251,7 @@ export default function Dashboard(){
         <Link to="/rewards"><Button variant="secondary" size="sm">{t("reward.viewAll")}</Button></Link>
       </div>
     </Card>
-    <Card><CardHeader><CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" />{t("ask.title")}</CardTitle></CardHeader><CardContent className="space-y-3">
-      <form onSubmit={onAsk} className="flex flex-col sm:flex-row gap-2">
-        <Input value={askQ} onChange={(e) => setAskQ(e.target.value)} placeholder={t("ask.ph")} maxLength={200} />
-        <Button type="submit" disabled={aiAsking || !askQ.trim()} className="shrink-0">{aiAsking ? t("ask.thinking") : t("ask.button")}</Button>
-      </form>
-      {answer && (
-        <div className="rounded-xl border bg-muted/40 p-3 text-sm space-y-1.5 animate-fade-up">
-          <Badge variant={answer.ai ? "default" : "secondary"}>{answer.ai ? t("ask.ai") : t("ask.local")}</Badge>
-          <div>{answer.text}</div>
-        </div>
-      )}
-    </CardContent></Card>
+    <AskBudgetApp ctx={askCtx} />
     <div className="grid gap-4 md:grid-cols-2">
       <Card><CardHeader><CardTitle>{t("dash.spendByBudget")}</CardTitle></CardHeader><CardContent className="h-[260px]">
         {chartData.length===0 ? <div className="text-sm text-muted-foreground">{t("dash.noBudgets")}</div> :
