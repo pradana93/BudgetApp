@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/toast";
 import { useRealtime } from "@/hooks/useRealtime";
 import { normalizeCategory, useCategories } from "@/hooks/useCategories";
 import { useLang } from "@/i18n/LanguageContext";
+import { useSession } from "@/hooks/useSession";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 type Budget = { id: string; name: string; total_amount: number; allocated_amount: number; available_amount: number; currency: string; status: string };
@@ -42,6 +43,12 @@ export default function Admin() {
   const [limit, setLimit] = React.useState(100);
   const [resetText, setResetText] = React.useState("");
   const { categories } = useCategories();
+  const { profile: me } = useSession();
+  const myId = me?.id ?? "";
+  const [showAddUser, setShowAddUser] = React.useState(false);
+  const [addForm, setAddForm] = React.useState({ email: "", display_name: "", password: "", role: "member" as "owner" | "member" });
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editForm, setEditForm] = React.useState({ display_name: "", role: "member" as "owner" | "member" });
   const [newCat, setNewCat] = React.useState("");
   const [catErr, setCatErr] = React.useState<string | null>(null);
   const usageCount = (name: string) => (requests ?? []).filter((r) => r.category === name).length;
@@ -240,6 +247,42 @@ export default function Admin() {
     },
   });
 
+  const callAdminUsers = async (payload: Record<string, unknown>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const base = import.meta.env.VITE_SUPABASE_URL as string;
+    const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+    const res = await fetch(`${base}/functions/v1/admin-users`, {
+      method: "POST",
+      headers: { apikey: anon, Authorization: `Bearer ${session?.access_token ?? ""}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const j = await res.json() as { ok?: boolean; error?: string };
+    if (!res.ok || !j.ok) throw new Error(j.error ?? `admin-users ${res.status}`);
+  };
+
+  const createUser = useMutation({
+    mutationFn: async () => {
+      if (!addForm.email.trim() || addForm.password.length < 8) throw new Error(t("admin.addUserInvalid"));
+      await callAdminUsers({ action: "create", email: addForm.email.trim(), password: addForm.password, display_name: addForm.display_name.trim(), role: addForm.role });
+    },
+    onSuccess: () => { setAddForm({ email: "", display_name: "", password: "", role: "member" }); setShowAddUser(false); qc.invalidateQueries({ queryKey: ["admin-users"] }); toast({ title: t("admin.userCreated") }); },
+    onError: (e: Error) => toast({ title: t("admin.userCreateFailed"), description: e.message, variant: "destructive" }),
+  });
+  const updateUser = useMutation({
+    mutationFn: async (p: { user_id: string; display_name: string; role: string }) => {
+      await callAdminUsers({ action: "update", user_id: p.user_id, display_name: p.display_name, role: p.role });
+    },
+    onSuccess: () => { setEditingId(null); qc.invalidateQueries({ queryKey: ["admin-users"] }); toast({ title: t("admin.userUpdated") }); },
+    onError: (e: Error) => toast({ title: t("admin.userUpdateFailed"), description: e.message, variant: "destructive" }),
+  });
+  const deleteUser = useMutation({
+    mutationFn: async (user_id: string) => {
+      await callAdminUsers({ action: "delete", user_id });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); toast({ title: t("admin.userDeleted") }); },
+    onError: (e: Error) => toast({ title: t("admin.userDeleteFailed"), description: e.message, variant: "destructive" }),
+  });
+
   const bulkReconcile = async (threshold: number) => {    const targets = approved.filter((r) => scoreOf(r).score >= threshold);
     if (targets.length === 0 || bulk.running) return;
     setBulk({ running: true, done: 0, total: targets.length });
@@ -365,13 +408,59 @@ export default function Admin() {
           {byCategory.length === 0 ? <div className="text-sm text-muted-foreground">{t("admin.noSpend")}</div> :
           <ResponsiveContainer width="100%" height="100%"><BarChart data={byCategory}><defs><linearGradient id="adminCatGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#2563eb" /></linearGradient></defs><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="total" fill="url(#adminCatGrad)" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer>}
         </CardContent></Card>
-        <Card><CardHeader><CardTitle>{t("admin.users")}</CardTitle></CardHeader><CardContent>
-          <Table><TableHeader><TableRow><TableHead>{t("admin.email")}</TableHead><TableHead>{t("admin.name")}</TableHead><TableHead>{t("admin.role")}</TableHead></TableRow></TableHeader>
-          <TableBody>{users?.map((u) => (
-            <TableRow key={u.id}><TableCell className="whitespace-nowrap"><span className="flex items-center gap-2"><UserAvatar userId={u.id} name={u.display_name ?? u.email} className="h-7 w-7 text-[10px]" />{u.email}</span></TableCell><TableCell>{u.display_name ?? "—"}</TableCell>
-            <TableCell><Badge variant={u.role === "owner" ? "default" : "secondary"} className="capitalize">{u.role}</Badge></TableCell></TableRow>))}
-          </TableBody></Table>
-        </CardContent></Card>
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2">{t("admin.users")} {users && <Badge variant="secondary">{users.length}</Badge>}</CardTitle>
+            <Button size="sm" onClick={() => setShowAddUser((v) => !v)}>{t("admin.addUser")}</Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {showAddUser && (
+              <div className="rounded-xl border bg-muted/20 p-3 space-y-2 animate-fade-up">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input placeholder={t("admin.emailPh")} value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} />
+                  <Input placeholder={t("admin.namePh")} value={addForm.display_name} onChange={(e) => setAddForm({ ...addForm, display_name: e.target.value })} />
+                  <Input placeholder={t("admin.passwordPh")} type="password" value={addForm.password} onChange={(e) => setAddForm({ ...addForm, password: e.target.value })} />
+                  <select value={addForm.role} onChange={(e) => setAddForm({ ...addForm, role: e.target.value as "owner" | "member" })} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+                    <option value="member">member</option>
+                    <option value="owner">owner</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => createUser.mutate()} disabled={createUser.isPending}>{createUser.isPending ? t("common.loading") : t("admin.create")}</Button>
+                  <Button size="sm" variant="outline" onClick={() => setShowAddUser(false)}>{t("common.cancel")}</Button>
+                </div>
+                {createUser.isError && <div className="text-sm text-destructive">{(createUser.error as Error).message}</div>}
+              </div>
+            )}
+            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+              <Table className="min-w-[560px]"><TableHeader><TableRow><TableHead className="min-w-[220px]">{t("admin.email")}</TableHead><TableHead>{t("admin.name")}</TableHead><TableHead>{t("admin.role")}</TableHead><TableHead className="text-right">{t("admin.usersActions")}</TableHead></TableRow></TableHeader>
+              <TableBody>{users?.map((u) => {
+                const isEditing = editingId === u.id;
+                const isSelf = u.id === myId;
+                return (
+                <TableRow key={u.id}><TableCell><span className="flex items-center gap-2 min-w-0"><UserAvatar userId={u.id} name={u.display_name ?? u.email} className="h-7 w-7 text-[10px] shrink-0" /><span className="truncate max-w-[180px] sm:max-w-[220px]" title={u.email}>{u.email}</span></span></TableCell>
+                  <TableCell>{isEditing ? <Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} className="h-8 min-w-[120px]" /> : (u.display_name ?? "—")}</TableCell>
+                  <TableCell>{isEditing ? <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value as "owner" | "member" })} className="h-8 rounded-md border bg-background px-2 text-sm"><option value="member">member</option><option value="owner">owner</option></select> : <Badge variant={u.role === "owner" ? "default" : "secondary"} className="capitalize">{u.role}</Badge>}</TableCell>
+                  <TableCell className="text-right">
+                    {isEditing ? (
+                      <span className="flex justify-end gap-1.5">
+                        <Button size="sm" className="h-7" onClick={() => updateUser.mutate({ user_id: u.id, display_name: editForm.display_name.trim(), role: editForm.role })} disabled={updateUser.isPending}>{t("common.save")}</Button>
+                        <Button size="sm" variant="outline" className="h-7" onClick={() => setEditingId(null)}>{t("common.cancel")}</Button>
+                      </span>
+                    ) : (
+                      <span className="flex justify-end gap-1.5">
+                        <Button size="sm" variant="outline" className="h-7" onClick={() => { setEditingId(u.id); setEditForm({ display_name: u.display_name ?? "", role: u.role as "owner" | "member" }); }}>{t("admin.edit")}</Button>
+                        <Button size="sm" variant="destructive" className="h-7" disabled={isSelf} onClick={() => { if (confirm(t("admin.deleteUserConfirm", { email: u.email }))) deleteUser.mutate(u.id); }}>{t("admin.delete")}</Button>
+                      </span>
+                    )}
+                  </TableCell></TableRow>
+                );
+              })}
+              </TableBody></Table>
+            </div>
+            <div className="text-xs text-muted-foreground">{t("admin.usersHint")}</div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
