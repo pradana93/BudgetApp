@@ -49,9 +49,14 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["personal_categories"]["Insert"]>;
       };
       personal_notes: {
-        Row: { id: string; user_id: string; title: string; body: string; amount: number | null; category_id: string | null; pinned: boolean; direction: "income" | "expense"; entry_date: string; created_at: string; updated_at: string };
-        Insert: { id?: string; user_id: string; title: string; body?: string; amount?: number | null; category_id?: string | null; pinned?: boolean; direction?: "income" | "expense"; entry_date?: string };
-        Update: { title?: string; body?: string; amount?: number | null; category_id?: string | null; pinned?: boolean; direction?: "income" | "expense"; entry_date?: string };
+        Row: { id: string; user_id: string; title: string; body: string; amount: number | null; category_id: string | null; pinned: boolean; direction: "income" | "expense" | "transfer"; entry_date: string; created_at: string; updated_at: string; account_id: string | null; transfer_to_account_id: string | null };
+        Insert: { id?: string; user_id: string; title: string; body?: string; amount?: number | null; category_id?: string | null; pinned?: boolean; direction?: "income" | "expense" | "transfer"; entry_date?: string; account_id?: string | null; transfer_to_account_id?: string | null };
+        Update: { title?: string; body?: string; amount?: number | null; category_id?: string | null; pinned?: boolean; direction?: "income" | "expense" | "transfer"; entry_date?: string; account_id?: string | null; transfer_to_account_id?: string | null };
+      };
+      personal_accounts: {
+        Row: { id: string; user_id: string; name: string; icon: string; color: string; initial_balance: number; created_at: string };
+        Insert: { id?: string; user_id: string; name: string; icon?: string; color?: string; initial_balance?: number };
+        Update: Partial<Database["public"]["Tables"]["personal_accounts"]["Insert"]>;
       };
     };
     Views: { [_ in never]: never };

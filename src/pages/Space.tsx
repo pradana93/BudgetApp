@@ -5,86 +5,66 @@ import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/useSession";
 import { useLang } from "@/i18n/LanguageContext";
 import { useToast } from "@/components/ui/toast";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent } from "@/components/ui/dialog";
 import { formatMoney, isValidMoney } from "@/lib/money";
 import { dateLocale } from "@/lib/datetime";
-import { Lock, Plus, Trash2, ShieldCheck, ChevronLeft, ChevronRight, Search, Check, X, PencilLine } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Plus, Trash2, PencilLine, Wallet, ArrowLeftRight, Utensils, Film, Car, Receipt, ShoppingCart, PiggyBank, DollarSign, CreditCard, Landmark, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Entry = {
-  id: string;
-  title: string;
-  body: string;
-  amount: number | null;
-  category_id: string | null;
-  direction: "income" | "expense";
-  entry_date: string;
-  created_at: string;
-  updated_at: string;
-};
+type Entry = { id: string; title: string; body: string; amount: number | null; category_id: string | null; direction: "income" | "expense" | "transfer"; entry_date: string; created_at: string; account_id: string | null; transfer_to_account_id: string | null };
 type PCat = { id: string; name: string; color: string; monthly_budget: number | null };
+type Account = { id: string; name: string; icon: string; color: string; initial_balance: number; created_at: string };
 
-const COLORS: { id: string; dot: string; chip: string }[] = [
-  { id: "blue", dot: "bg-blue-500", chip: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
-  { id: "violet", dot: "bg-violet-500", chip: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
-  { id: "emerald", dot: "bg-emerald-500", chip: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
-  { id: "amber", dot: "bg-amber-500", chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  { id: "rose", dot: "bg-rose-500", chip: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
-];
-const colorOf = (c: string) => COLORS.find((x) => x.id === c) ?? COLORS[0];
+const ICONS: Record<string, React.ElementType> = { wallet: Wallet, cash: DollarSign, bca: CreditCard, bank: Landmark, entertainment: Film, food: Utensils, car: Car, bills: Receipt, shopping: ShoppingCart, investment: PiggyBank, transfer: ArrowLeftRight };
+const COLORS: Record<string, string> = { blue: "from-blue-500 to-blue-600", violet: "from-violet-500 to-violet-600", emerald: "from-emerald-500 to-emerald-600", amber: "from-amber-500 to-orange-500", rose: "from-rose-500 to-pink-500", slate: "from-slate-600 to-slate-700", cyan: "from-cyan-500 to-teal-500", orange: "from-orange-500 to-red-500" };
+const DOT: Record<string, string> = { blue: "bg-blue-500", violet: "bg-violet-500", emerald: "bg-emerald-500", amber: "bg-amber-500", rose: "bg-rose-500", slate: "bg-slate-500", cyan: "bg-cyan-500", orange: "bg-orange-500" };
 
-const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const today = () => isoDay(new Date());
 
-type Draft = { title: string; body: string; amount: string; category_id: string; direction: "income" | "expense"; entry_date: string };
-const emptyDraft = (): Draft => ({ title: "", body: "", amount: "", category_id: "", direction: "expense", entry_date: today() });
+const catIcon = (name?: string | null) => {
+  const k = (name ?? "").toLowerCase();
+  if (k.includes("entertain")) return Film;
+  if (k.includes("food")) return Utensils;
+  if (k.includes("transfer")) return ArrowLeftRight;
+  if (k.includes("car")) return Car;
+  if (k.includes("bill")) return Receipt;
+  if (k.includes("shopping")) return ShoppingCart;
+  if (k.includes("invest")) return PiggyBank;
+  if (k.includes("cash")) return DollarSign;
+  return Wallet;
+};
 
 export default function Space() {
   const { profile } = useSession();
-  const { t, lang } = useLang();
+  const { lang } = useLang();
   const { toast } = useToast();
   const qc = useQueryClient();
-
   const now0 = new Date();
-  const [ym, setYm] = React.useState<{ y: number; m: number }>({ y: now0.getFullYear(), m: now0.getMonth() });
-  const [allMonths, setAllMonths] = React.useState(false);
+  const [ym, setYm] = React.useState({ y: now0.getFullYear(), m: now0.getMonth() });
   const [q, setQ] = React.useState("");
   const [catFilter, setCatFilter] = React.useState("all");
-  const [confirmDel, setConfirmDel] = React.useState<string | null>(null);
+  const [accFilter, setAccFilter] = React.useState("all");
+  const [showAdd, setShowAdd] = React.useState(false);
+  const [showAcc, setShowAcc] = React.useState(false);
   const [editing, setEditing] = React.useState<Entry | null>(null);
+  const [txType, setTxType] = React.useState<"expense" | "income" | "transfer">("expense");
+  const [form, setForm] = React.useState({ title: "", body: "", amount: "", category_id: "", account_id: "", to_account_id: "", entry_date: new Date().toISOString().slice(0,10) });
 
-  const [addRow, setAddRow] = React.useState<Draft>(emptyDraft());
-
-  const [open, setOpen] = React.useState(false);
-  const [draft, setDraft] = React.useState<Draft>(emptyDraft());
-  const [formErr, setFormErr] = React.useState<string | null>(null);
-
-  const [newCatName, setNewCatName] = React.useState("");
-  const [newCatBudget, setNewCatBudget] = React.useState("");
-  const [newCatColor, setNewCatColor] = React.useState("blue");
-  const [confirmCatDel, setConfirmCatDel] = React.useState<string | null>(null);
-  const [catsOpen, setCatsOpen] = React.useState(false);
+  const [newAcc, setNewAcc] = React.useState({ name: "", icon: "wallet", color: "blue", initial_balance: "" });
 
   const { data: entries } = useQuery({
     queryKey: ["personal-entries", profile?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personal_notes")
-        .select("id,title,body,amount,category_id,direction,entry_date,created_at,updated_at")
-        .order("entry_date", { ascending: true })
-        .order("created_at", { ascending: true });
+      const { data, error } = await supabase.from("personal_notes").select("id,title,body,amount,category_id,direction,entry_date,created_at,account_id,transfer_to_account_id").order("entry_date", { ascending: false }).order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Entry[];
     },
     enabled: !!profile,
   });
-
   const { data: cats } = useQuery({
     queryKey: ["personal-cats", profile?.id],
     queryFn: async () => {
@@ -94,412 +74,312 @@ export default function Space() {
     },
     enabled: !!profile,
   });
+  const { data: accounts } = useQuery({
+    queryKey: ["personal-accounts", profile?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("personal_accounts").select("id,name,icon,color,initial_balance,created_at").order("created_at");
+      if (error) throw error;
+      return (data ?? []) as Account[];
+    },
+    enabled: !!profile,
+  });
 
   React.useEffect(() => {
     if (!profile) return;
-    const ch = supabase.channel(`personal-ledger-${profile.id}`)
+    const ch = supabase.channel(`premium-ledger-${profile.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "personal_notes" }, () => qc.invalidateQueries({ queryKey: ["personal-entries", profile.id] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "personal_accounts" }, () => qc.invalidateQueries({ queryKey: ["personal-accounts", profile.id] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "personal_categories" }, () => qc.invalidateQueries({ queryKey: ["personal-cats", profile.id] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc, profile]);
 
-  const invalidateEntries = () => qc.invalidateQueries({ queryKey: ["personal-entries", profile?.id] });
-  const invalidateCats = () => qc.invalidateQueries({ queryKey: ["personal-cats", profile?.id] });
+  const accById = (id: string | null) => accounts?.find((a) => a.id === id);
+  const catById = (id: string | null) => cats?.find((c) => c.id === id);
 
-  const amountOf = (d: Draft) => d.amount.trim();
-  const validate = (d: Draft): string | null => {
-    if (!d.title.trim() || !amountOf(d)) return t("ledger.fRequired");
-    if (!isValidMoney(amountOf(d)) || Number(amountOf(d)) <= 0) return t("v.amountGt");
-    return null;
+  const curKey = `${ym.y}-${String(ym.m + 1).padStart(2, "0")}`;
+  const monthLabel = new Date(ym.y, ym.m, 1).toLocaleDateString(dateLocale(lang), { month: "long", year: "numeric" });
+
+  // account balances: initial + sum
+  const balances = React.useMemo(() => {
+    const map = new Map<string, Decimal>();
+    for (const a of accounts ?? []) map.set(a.id, new Decimal(a.initial_balance ?? 0));
+    for (const e of entries ?? []) {
+      const amt = new Decimal(e.amount ?? 0);
+      if (e.direction === "income" && e.account_id) map.set(e.account_id, (map.get(e.account_id) ?? new Decimal(0)).add(amt));
+      else if (e.direction === "expense" && e.account_id) map.set(e.account_id, (map.get(e.account_id) ?? new Decimal(0)).sub(amt));
+      else if (e.direction === "transfer" && e.account_id && e.transfer_to_account_id) {
+        map.set(e.account_id, (map.get(e.account_id) ?? new Decimal(0)).sub(amt));
+        map.set(e.transfer_to_account_id, (map.get(e.transfer_to_account_id) ?? new Decimal(0)).add(amt));
+      } else if (e.direction === "transfer" && e.account_id) {
+        map.set(e.account_id, (map.get(e.account_id) ?? new Decimal(0)).sub(amt));
+      }
+    }
+    return map;
+  }, [accounts, entries]);
+
+  const filtered = React.useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return (entries ?? []).filter((e) => {
+      if (e.entry_date.slice(0,7) !== curKey) return false;
+      if (catFilter !== "all" && (e.category_id ?? "none") !== catFilter) return false;
+      if (accFilter !== "all" && e.account_id !== accFilter && e.transfer_to_account_id !== accFilter) return false;
+      if (needle && !`${e.title} ${e.body} ${catById(e.category_id)?.name ?? ""}`.toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }, [entries, curKey, catFilter, accFilter, q, cats]);
+
+  const sums = React.useMemo(() => {
+    let exp = new Decimal(0), inc = new Decimal(0);
+    for (const e of filtered) {
+      const amt = new Decimal(e.amount ?? 0);
+      if (e.direction === "expense") exp = exp.add(amt);
+      else if (e.direction === "income") inc = inc.add(amt);
+    }
+    // balance = sum all months up to current
+    let bal = new Decimal(0);
+    for (const a of accounts ?? []) bal = bal.add(new Decimal(a.initial_balance ?? 0));
+    for (const e of entries ?? []) {
+      if (e.entry_date.slice(0,7) > curKey) continue;
+      const amt = new Decimal(e.amount ?? 0);
+      if (e.direction === "income") bal = bal.add(amt);
+      else if (e.direction === "expense") bal = bal.sub(amt);
+      // transfer net 0 overall, so ignore for total balance (moves between accounts)
+    }
+    return { exp, inc, bal };
+  }, [filtered, entries, accounts, curKey]);
+
+  // grouped by date
+  const grouped = React.useMemo(() => {
+    const map = new Map<string, Entry[]>();
+    for (const e of filtered) {
+      const k = e.entry_date.slice(0,10);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(e);
+    }
+    return [...map.entries()].sort((a,b) => b[0].localeCompare(a[0]));
+  }, [filtered]);
+
+  const shift = (d: number) => setYm((v) => { const dt = new Date(v.y, v.m + d, 1); return { y: dt.getFullYear(), m: dt.getMonth() }; });
+
+  const openAdd = (type: "expense"|"income"|"transfer" = "expense") => { setTxType(type); setForm({ title: "", body: "", amount: "", category_id: cats?.[0]?.id ?? "", account_id: accounts?.[0]?.id ?? "", to_account_id: accounts?.[1]?.id ?? "", entry_date: new Date().toISOString().slice(0,10) }); setEditing(null); setShowAdd(true); };
+  const openEdit = (e: Entry) => {
+    setEditing(e);
+    setTxType(e.direction as "expense"|"income"|"transfer");
+    setForm({ title: e.title, body: e.body, amount: e.amount != null ? String(e.amount) : "", category_id: e.category_id ?? "", account_id: e.account_id ?? "", to_account_id: e.transfer_to_account_id ?? "", entry_date: e.entry_date.slice(0,10) });
+    setShowAdd(true);
   };
 
-  const saveEntry = useMutation({
-    mutationFn: async ({ d, id }: { d: Draft; id: string | null }) => {
+  const saveTx = useMutation({
+    mutationFn: async () => {
       if (!profile) throw new Error("no user");
-      const err = validate(d);
-      if (err) throw new Error(err);
-      const payload = {
+      if (!form.title.trim() || !isValidMoney(form.amount) || Number(form.amount) <= 0) throw new Error("Invalid");
+      if (txType !== "transfer" && !form.account_id) throw new Error("Select account");
+      if (txType === "transfer" && (!form.account_id || !form.to_account_id || form.account_id === form.to_account_id)) throw new Error("Select two different accounts");
+      const payload: Record<string, unknown> = {
         user_id: profile.id,
-        title: d.title.trim().slice(0, 120),
-        body: d.body.slice(0, 4000),
-        amount: Number(amountOf(d)),
-        category_id: d.category_id || null,
-        direction: d.direction,
-        entry_date: d.entry_date || today(),
+        title: form.title.trim().slice(0,120),
+        body: form.body.slice(0,4000),
+        amount: Number(form.amount),
+        category_id: form.category_id || null,
+        direction: txType,
+        entry_date: form.entry_date,
+        account_id: form.account_id || null,
+        transfer_to_account_id: txType === "transfer" ? form.to_account_id : null,
       };
-      if (id) {
-        const { error } = await supabase.from("personal_notes").update(payload).eq("id", id);
+      if (editing) {
+        const { error } = await supabase.from("personal_notes").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("personal_notes").insert(payload);
         if (error) throw error;
       }
     },
-    onSuccess: (_r, { d, id }) => {
-      invalidateEntries();
-      if (id) {
-        setOpen(false);
-        toast({ title: t("ledger.entrySaved") });
-      } else {
-        const carryDate = d.entry_date;
-        const carryCat = d.category_id;
-        setAddRow({ ...emptyDraft(), entry_date: carryDate, category_id: carryCat });
-        toast({ title: t("ledger.entrySaved") });
-      }
-    },
-    onError: (e: Error) => {
-      setFormErr(e.message);
-      toast({ title: t("space.failed"), description: e.message, variant: "destructive" });
-    },
+    onSuccess: () => { setShowAdd(false); setEditing(null); qc.invalidateQueries({ queryKey: ["personal-entries", profile?.id] }); toast({ title: "Saved" }); },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
   });
 
-  const delEntry = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("personal_notes").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => { setConfirmDel(null); invalidateEntries(); toast({ title: t("ledger.entryDeleted") }); },
-    onError: (e: Error) => toast({ title: t("space.failed"), description: e.message, variant: "destructive" }),
+  const delTx = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("personal_notes").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["personal-entries", profile?.id] }); toast({ title: "Deleted" }); },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
   });
 
-  const addCat = useMutation({
+  const createAcc = useMutation({
     mutationFn: async () => {
-      if (!profile) throw new Error("no user");
-      const name = newCatName.trim().slice(0, 60);
-      if (!name) return;
-      const budget = newCatBudget.trim();
-      if (budget && !(isValidMoney(budget) && Number(budget) >= 0)) throw new Error(t("v.invalidAmount"));
-      const { error } = await supabase.from("personal_categories").insert({ user_id: profile.id, name, color: newCatColor, monthly_budget: budget ? Number(budget) : null });
+      if (!profile || !newAcc.name.trim()) throw new Error("Name required");
+      const bal = newAcc.initial_balance.trim();
+      if (bal && !isValidMoney(bal)) throw new Error("Invalid balance");
+      const { error } = await supabase.from("personal_accounts").insert({ user_id: profile.id, name: newAcc.name.trim().slice(0,30), icon: newAcc.icon, color: newAcc.color, initial_balance: bal ? Number(bal) : 0 });
       if (error) throw error;
     },
-    onSuccess: () => { setNewCatName(""); setNewCatBudget(""); invalidateCats(); toast({ title: t("space.catAdded") }); },
-    onError: (e: Error) => toast({ title: t("space.failed"), description: e.message, variant: "destructive" }),
+    onSuccess: () => { setNewAcc({ name: "", icon: "wallet", color: "blue", initial_balance: "" }); setShowAcc(false); qc.invalidateQueries({ queryKey: ["personal-accounts", profile?.id] }); toast({ title: "Account created" }); },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
   });
 
-  const delCat = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("personal_categories").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => { setConfirmCatDel(null); invalidateCats(); invalidateEntries(); toast({ title: t("space.catDeleted") }); },
-    onError: (e: Error) => toast({ title: t("space.failed"), description: e.message, variant: "destructive" }),
-  });
-
-  const catById = (id: string | null) => cats?.find((c) => c.id === id);
-
-  // Running balance across ALL entries, then view a slice.
-  const withBalance = React.useMemo(() => {
-    let run = new Decimal(0);
-    return (entries ?? []).map((e) => {
-      const amt = new Decimal(e.amount ?? 0);
-      run = e.direction === "income" ? run.add(amt) : run.sub(amt);
-      return { ...e, balance: run };
-    });
-  }, [entries]);
-
-  const monthKey = (iso: string) => (iso ?? "").slice(0, 7);
-  const curKey = `${ym.y}-${String(ym.m + 1).padStart(2, "0")}`;
-
-  const visible = React.useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return withBalance.filter((e) => {
-      if (!allMonths && monthKey(e.entry_date) !== curKey) return false;
-      if (catFilter !== "all" && (e.category_id ?? "none") !== catFilter) return false;
-      if (needle && !`${e.title} ${e.body}`.toLowerCase().includes(needle)) return false;
-      return true;
-    });
-  }, [withBalance, allMonths, curKey, catFilter, q]);
-
-  const openingBalance = React.useMemo(() => {
-    if (allMonths) return new Decimal(0);
-    let run = new Decimal(0);
-    for (const e of withBalance) {
-      if (monthKey(e.entry_date) >= curKey) break;
-      const amt = new Decimal(e.amount ?? 0);
-      run = e.direction === "income" ? run.add(amt) : run.sub(amt);
-    }
-    return run;
-  }, [withBalance, allMonths, curKey]);
-
-  const sums = React.useMemo(() => {
-    let inp = new Decimal(0);
-    let outp = new Decimal(0);
-    for (const e of visible) {
-      const amt = new Decimal(e.amount ?? 0);
-      if (e.direction === "income") inp = inp.add(amt);
-      else outp = outp.add(amt);
-    }
-    return { inp, outp, net: inp.sub(outp), close: openingBalance.add(inp).sub(outp) };
-  }, [visible, openingBalance]);
-
-  const catSpent = React.useMemo(() => {
-    const map = new Map<string, number>();
-    for (const e of entries ?? []) {
-      if (e.direction !== "expense" || e.amount == null) continue;
-      if (!allMonths && monthKey(e.entry_date) !== curKey) continue;
-      const key = e.category_id ?? "__none";
-      map.set(key, (map.get(key) ?? 0) + Number(e.amount));
-    }
-    return map;
-  }, [entries, allMonths, curKey]);
-
-  const shift = (d: number) => {
-    setAllMonths(false);
-    setYm((v) => {
-      const dt = new Date(v.y, v.m + d, 1);
-      return { y: dt.getFullYear(), m: dt.getMonth() };
-    });
-  };
-  const monthLabel = new Date(ym.y, ym.m, 1).toLocaleDateString(dateLocale(lang), { month: "long", year: "numeric" });
-  const totalPlan = (cats ?? []).reduce((s, c) => s + (c.monthly_budget ? Number(c.monthly_budget) : 0), 0);
-
-  const openEditDialog = (e: Entry) => {
-    setEditing(e);
-    setFormErr(null);
-    setDraft({
-      title: e.title,
-      body: e.body,
-      amount: e.amount != null ? String(e.amount) : "",
-      category_id: e.category_id ?? "",
-      direction: e.direction,
-      entry_date: e.entry_date ?? today(),
-    });
-    setOpen(true);
-  };
-
-  const rowClass = "grid grid-cols-2 md:grid-cols-[110px_1fr_150px_120px_120px_140px_64px] gap-2 items-center";
+  const totalBalance = [...balances.values()].reduce((a,b) => a.add(b), new Decimal(0));
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      {/* Hero */}
-      <div className="rounded-2xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-indigo-600 text-white p-6 shadow-lg overflow-hidden relative">
-        <div aria-hidden className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
-        <div className="relative flex flex-wrap items-center gap-4">
-          <span className="rounded-2xl bg-white/15 p-3 backdrop-blur shrink-0"><Lock className="h-7 w-7" /></span>
-          <div className="flex-1 min-w-[200px]">
-            <h1 className="text-2xl font-bold tracking-tight">{t("ledger.title")}</h1>
-            <p className="text-sm text-white/85 mt-0.5">{t("ledger.sub")}</p>
-            <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-white/75">
-              <ShieldCheck className="h-3.5 w-3.5" /> Row-level security: private from every other account.
-            </p>
+    <div className="min-h-[80vh] -mx-4 -mt-4 md:-mx-6 md:-mt-6">
+      {/* MyMoney dark premium header */}
+      <div className="bg-[#3a3a3a] text-[#f5f5dc] sticky top-0 z-10 shadow-lg">
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-xl font-bold italic tracking-wide" style={{ fontFamily: "cursive" }}>MyMoney</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowAcc(true)} className="rounded-full bg-white/10 p-2"><Wallet className="h-4 w-4" /></button>
+            <div className="relative"><Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 opacity-60" /><Input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Search" className="h-8 pl-7 bg-white/10 border-white/20 text-white placeholder:text-white/50 w-28 focus:w-40 transition-all" /></div>
           </div>
-          <div className="grid grid-cols-3 gap-x-6 gap-y-1 text-right">
-            <div className="text-xs text-white/70">{t("ledger.income")}</div>
-            <div className="text-xs text-white/70">{t("ledger.expense")}</div>
-            <div className="text-xs text-white/70">{t("ledger.balance")}</div>
-            <div className="font-bold tabular">{formatMoney(sums.inp.toNumber())}</div>
-            <div className="font-bold tabular">{formatMoney(sums.outp.toNumber())}</div>
-            <div className="font-bold tabular">{formatMoney(sums.close.toNumber())}</div>
+        </div>
+        <div className="flex items-center justify-between px-4 py-2 text-center">
+          <button onClick={() => shift(-1)} className="p-2 rounded-full hover:bg-white/10"><ChevronLeft className="h-5 w-5" /></button>
+          <span className="font-semibold">{monthLabel}</span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => shift(1)} className="p-2 rounded-full hover:bg-white/10"><ChevronRight className="h-5 w-5" /></button>
+            <button className="p-2 rounded-full hover:bg-white/10"><SlidersHorizontal className="h-4 w-4" /></button>
           </div>
+        </div>
+        <div className="grid grid-cols-3 text-center py-3 border-t border-white/10 text-sm">
+          <div><div className="text-xs opacity-70">EXPENSE</div><div className="font-bold text-[#ff8a80] tabular">Rp{formatMoney(sums.exp.toNumber()).replace("Rp","")}</div></div>
+          <div><div className="text-xs opacity-70">INCOME</div><div className="font-bold text-[#a5d6a7] tabular">Rp{formatMoney(sums.inc.toNumber()).replace("Rp","")}</div></div>
+          <div><div className="text-xs opacity-70">BALANCE</div><div className="font-bold tabular">Rp{formatMoney(sums.bal.toNumber()).replace("Rp","")}</div></div>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" onClick={() => shift(-1)} aria-label={t("ledger.prevMonth")}><ChevronLeft className="h-4 w-4" /></Button>
-          <span className={cn("min-w-[150px] text-center text-sm font-semibold capitalize", allMonths && "text-muted-foreground")}>{allMonths ? t("ledger.allMonths") : monthLabel}</span>
-          <Button variant="outline" size="sm" onClick={() => shift(1)} aria-label={t("ledger.nextMonth")}><ChevronRight className="h-4 w-4" /></Button>
-        </div>
-        <Button variant={allMonths ? "default" : "ghost"} size="sm" onClick={() => setAllMonths((v) => !v)}>{t("ledger.allMonths")}</Button>
-        <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="w-auto h-9 text-sm" aria-label={t("ledger.cat")}>
-          <option value="all">{t("ledger.allCats")}</option>
-          <option value="none">{t("ledger.uncategorized")}</option>
-          {cats?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </Select>
-        <div className="relative flex-1 min-w-[140px] max-w-xs ml-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={t("space.searchPh")} value={q} onChange={(e) => setQ(e.target.value)} className="pl-9 h-9" />
-        </div>
-        <Button size="sm" onClick={() => document.getElementById("ledger-add-first")?.focus()}><Plus className="h-4 w-4 mr-1.5" />{t("ledger.newEntry")}</Button>
-      </div>
-
-      {/* Ledger */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className={cn(rowClass, "hidden md:grid pb-2 border-b text-[11px] font-semibold uppercase tracking-wider text-muted-foreground")}>
-            <span>{t("ledger.date")}</span><span>{t("ledger.desc")}</span><span>{t("ledger.cat")}</span>
-            <span className="text-right">{t("ledger.income")}</span><span className="text-right">{t("ledger.expense")}</span>
-            <span className="text-right">{t("ledger.balance")}</span><span />
-          </div>
-
-          {visible.length === 0 && (
-            <div className="py-10 text-center text-sm text-muted-foreground">{t("ledger.empty")}</div>
-          )}
-
-          {visible.map((e) => {
-            const cat = catById(e.category_id);
-            const day = new Date(e.entry_date);
+      {/* Accounts horizontal */}
+      <div className="bg-[#2f2f2f] px-3 py-3 border-b border-white/10">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          <button onClick={() => setAccFilter("all")} className={cn("shrink-0 rounded-xl px-4 py-3 text-left min-w-[110px]", accFilter==="all" ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white" : "bg-white/10 text-white/80")}>
+            <div className="text-xs opacity-70">All</div><div className="font-bold text-sm tabular">{formatMoney(totalBalance.toNumber())}</div><div className="text-[11px] opacity-60">{accounts?.length ?? 0} accounts</div>
+          </button>
+          {accounts?.map((a) => {
+            const Icon = ICONS[a.icon] ?? Wallet;
+            const bal = balances.get(a.id) ?? new Decimal(0);
             return (
-              <div key={e.id} className={cn(rowClass, "py-2 border-b last:border-0 text-sm")}>
-                <span className="tabular text-muted-foreground whitespace-nowrap">{Number.isNaN(day.getTime()) ? e.entry_date : day.toLocaleDateString(dateLocale(lang), { day: "2-digit", month: "short" })}</span>
-                <span className="min-w-0">
-                  <span className="font-medium truncate block">{e.title}</span>
-                  {e.body && <span className="text-xs text-muted-foreground line-clamp-1">{e.body}</span>}
-                </span>
-                <span className="min-w-0">
-                  {cat
-                    ? <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium max-w-full", colorOf(cat.color).chip)}><span className={cn("h-1.5 w-1.5 rounded-full shrink-0", colorOf(cat.color).dot)} /><span className="truncate">{cat.name}</span></span>
-                    : <span className="text-xs text-muted-foreground">{t("ledger.uncategorized")}</span>}
-                </span>
-                <span className="tabular text-right font-semibold text-emerald-600 dark:text-emerald-400">{e.direction === "income" ? formatMoney(Number(e.amount ?? 0)) : ""}</span>
-                <span className="tabular text-right font-semibold text-rose-600 dark:text-rose-400">{e.direction === "expense" ? formatMoney(Number(e.amount ?? 0)) : ""}</span>
-                <span className="tabular text-right font-bold">{formatMoney(e.balance.toNumber())}</span>
-                <span className="flex items-center justify-end gap-1">
-                  {confirmDel === e.id ? (
-                    <>
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setConfirmDel(null)} aria-label={t("space.cancel")}><X className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="destructive" className="h-6 w-6 p-0" onClick={() => delEntry.mutate(e.id)} aria-label={t("space.delete")}><Check className="h-3.5 w-3.5" /></Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => openEditDialog(e)} aria-label={t("profile.editTitle")}><PencilLine className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDel(e.id)} aria-label={t("space.delete")}><Trash2 className="h-3.5 w-3.5" /></Button>
-                    </>
-                  )}
-                </span>
-              </div>
+              <button key={a.id} onClick={() => setAccFilter(accFilter===a.id ? "all" : a.id)} className={cn("shrink-0 rounded-xl px-4 py-3 text-left min-w-[130px] border", accFilter===a.id ? "bg-white text-slate-800 border-violet-500" : "bg-[#3a3a3a] text-white border-white/10")}>
+                <div className={cn("h-6 w-6 rounded-full flex items-center justify-center mb-1 bg-gradient-to-br text-white text-xs", COLORS[a.color] ?? COLORS.blue)}><Icon className="h-3.5 w-3.5" /></div>
+                <div className="font-semibold text-sm truncate">{a.name}</div><div className="tabular text-xs">{formatMoney(bal.toNumber())}</div>
+              </button>
             );
           })}
+          <button onClick={() => setShowAcc(true)} className="shrink-0 rounded-xl border-2 border-dashed border-white/20 px-4 py-3 min-w-[110px] text-white/70 flex flex-col items-center justify-center gap-1"><Plus className="h-5 w-5" /><span className="text-xs">New</span></button>
+        </div>
+      </div>
 
-          {/* Add row */}
-          <div className={cn(rowClass, "pt-3")}>
-            <Input id="ledger-add-first" type="date" value={addRow.entry_date} onChange={(ev) => setAddRow({ ...addRow, entry_date: ev.target.value })} className="h-9" aria-label={t("ledger.date")} />
-            <Input placeholder={t("ledger.desc")} value={addRow.title} onChange={(ev) => setAddRow({ ...addRow, title: ev.target.value })} maxLength={120} className="h-9" />
-            <Select value={addRow.category_id} onChange={(ev) => setAddRow({ ...addRow, category_id: ev.target.value })} className="h-9 text-sm" aria-label={t("ledger.cat")}>
-              <option value="">{t("ledger.uncategorized")}</option>
-              {cats?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </Select>
-            <Input placeholder="0" value={addRow.direction === "income" ? addRow.amount : ""} onChange={(ev) => setAddRow({ ...addRow, amount: ev.target.value, direction: "income" })} inputMode="decimal" className="h-9 tabular text-right" aria-label={t("ledger.income")} />
-            <Input placeholder="0" value={addRow.direction === "expense" ? addRow.amount : ""} onChange={(ev) => setAddRow({ ...addRow, amount: ev.target.value, direction: "expense" })} inputMode="decimal" className="h-9 tabular text-right" aria-label={t("ledger.expense")} />
-            <Button onClick={() => saveEntry.mutate({ d: addRow, id: null })} disabled={saveEntry.isPending || !addRow.title.trim() || !amountOf(addRow)} className="h-9 justify-self-end whitespace-nowrap"><Plus className="h-4 w-4 mr-1" />{t("ledger.addEntry")}</Button>
-            <span />
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">{t("ledger.inOut")} • {t("ledger.fRequired")}</p>
-        </CardContent>
-      </Card>
+      {/* Filters */}
+      <div className="bg-[#e8e8e8] px-3 py-2 flex gap-2 overflow-x-auto">
+        <Select value={catFilter} onChange={(e)=>setCatFilter(e.target.value)} className="h-8 text-xs bg-white"><option value="all">All Categories</option><option value="none">None</option>{cats?.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+        <span className="text-xs text-muted-foreground py-1.5 whitespace-nowrap">{filtered.length} records</span>
+      </div>
 
-      {/* Categories & budgets */}
-      <Card>
-        <CardContent className="pt-5">
-          <button type="button" onClick={() => setCatsOpen((v) => !v)} className="w-full flex items-center justify-between gap-2">
-            <span className="text-left">
-              <span className="text-sm font-semibold block">{t("space.budgets")}</span>
-              <span className="text-xs text-muted-foreground">{t("space.budgetSub")}</span>
-            </span>
-            <span className="flex items-center gap-3">
-              <span className="text-sm tabular text-muted-foreground whitespace-nowrap">{cats?.length ?? 0} {t("space.cats").toLowerCase()}</span>
-              <span className={cn("inline-block transition-transform", catsOpen && "rotate-180")}>
-                <ChevronRight className="h-4 w-4 rotate-90" />
-              </span>
-            </span>
-          </button>
-
-          {catsOpen && (
-            <div className="mt-4 space-y-2">
-              {cats?.map((c) => {
-                const spent = catSpent.get(c.id) ?? 0;
-                const budget = c.monthly_budget ? Number(c.monthly_budget) : 0;
-                const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
-                const over = budget > 0 && spent > budget;
+      {/* Grouped list */}
+      <div className="bg-[#d6d6d6] min-h-[50vh] pb-24">
+        {grouped.length===0 ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">No records this month — tap + to add Income/Expense/Transfer</div>
+        ) : grouped.map(([date, items]) => {
+          const d = new Date(date);
+          const label = isNaN(d.getTime()) ? date : d.toLocaleDateString(dateLocale(lang), { month: "short", day: "numeric", weekday: "long" });
+          return (
+            <div key={date}>
+              <div className="sticky top-0 bg-[#c9c9c9] px-3 py-1.5 text-xs font-semibold text-slate-700 border-b border-slate-400/20">{label}</div>
+              {items.map((e) => {
+                const cat = catById(e.category_id);
+                const acc = accById(e.account_id);
+                const toAcc = accById(e.transfer_to_account_id);
+                const isTransfer = e.direction === "transfer";
+                const Icon = isTransfer ? ArrowLeftRight : catIcon(cat?.name ?? e.title);
+                const iconBg = isTransfer ? "bg-blue-600" : e.direction === "income" ? "bg-emerald-600" : cat ? DOT[cat.color] ?? "bg-slate-500" : "bg-rose-500";
+                const amountColor = isTransfer ? "text-blue-600" : e.direction === "income" ? "text-emerald-600" : "text-[#c75c5c]";
+                const amountPrefix = isTransfer ? "" : e.direction === "income" ? "" : "-";
                 return (
-                  <div key={c.id} className="grid grid-cols-2 sm:grid-cols-[1fr_140px_120px_1fr_36px] gap-2 items-center border-t pt-2 text-sm">
-                    <span className="flex items-center gap-2 min-w-0">
-                      <span className={cn("h-3 w-3 rounded-full shrink-0", colorOf(c.color).dot)} />
-                      <span className="font-medium truncate">{c.name}</span>
+                  <div key={e.id} className="flex items-center gap-3 px-3 py-2.5 bg-[#d6d6d6] border-b border-white/40 hover:bg-white/40 group">
+                    <span className={cn("h-9 w-9 rounded-full flex items-center justify-center text-white shrink-0", iconBg)}><Icon className="h-5 w-5" /></span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-slate-800 truncate">{cat?.name ?? e.title}</div>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                        {isTransfer ? (
+                          <>
+                            <span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5 border"><Wallet className="h-3 w-3" />{acc?.name ?? "?"}</span>
+                            <ArrowLeftRight className="h-3 w-3" />
+                            <span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5 border"><Wallet className="h-3 w-3" />{toAcc?.name ?? "?"}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5 border"><CreditCard className="h-3 w-3" />{acc?.name ?? "Cash"}{e.body ? ` “ ${e.body.slice(0,16)} ”` : ""}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <span className={cn("font-bold tabular text-sm shrink-0", amountColor)}>{amountPrefix}Rp{formatMoney(Number(e.amount ?? 0)).replace("Rp","")}</span>
+                    <span className="hidden group-hover:flex gap-1 shrink-0">
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={()=>openEdit(e)}><PencilLine className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-rose-600" onClick={()=>delTx.mutate(e.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </span>
-                    <span className="tabular text-muted-foreground">{c.monthly_budget != null ? formatMoney(Number(c.monthly_budget)) : t("space.noBudgetSet")}</span>
-                    <span className={cn("tabular", over && "text-destructive font-semibold")}>{formatMoney(spent)}</span>
-                    <span className="col-span-2 sm:col-span-1 h-2 rounded-full bg-muted overflow-hidden"><span className={cn("block h-2 rounded-full transition-all", over ? "bg-destructive" : "bg-gradient-to-r from-fuchsia-500 to-indigo-500")} style={{ width: `${pct}%` }} /></span>
-                    {confirmCatDel === c.id ? (
-                      <span className="col-span-2 sm:col-span-2 flex items-center gap-1 text-xs">
-                        <span className="truncate">{t("space.deleteCatConfirm")}</span>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setConfirmCatDel(null)} aria-label={t("space.cancel")}><X className="h-3 w-3" /></Button>
-                        <Button size="sm" variant="destructive" className="h-6 w-6 p-0" onClick={() => delCat.mutate(c.id)} aria-label={t("space.deleteCat")}><Check className="h-3 w-3" /></Button>
-                      </span>
-                    ) : (
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => setConfirmCatDel(c.id)} aria-label={t("space.deleteCat")}><Trash2 className="h-3.5 w-3.5" /></Button>
-                    )}
                   </div>
                 );
               })}
-
-              <div className="grid grid-cols-2 sm:grid-cols-[1fr_140px_120px_1fr_36px] gap-2 items-center border-t pt-3">
-                <span className="flex items-center gap-2 min-w-0">
-                  <button type="button" onClick={() => setNewCatColor(COLORS[(COLORS.findIndex((x) => x.id === newCatColor) + 1) % COLORS.length].id)} aria-label={t("space.catColor")}
-                    className={cn("h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-primary/40 ring-offset-2", colorOf(newCatColor).dot)} />
-                  <Input placeholder={t("space.addCategory")} value={newCatName} onChange={(e) => setNewCatName(e.target.value)} maxLength={60}
-                    onKeyDown={(e) => { if (e.key === "Enter" && newCatName.trim()) { e.preventDefault(); addCat.mutate(); } }}
-                    className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0" />
-                </span>
-                <Input placeholder={t("space.noBudgetSet")} value={newCatBudget} onChange={(e) => setNewCatBudget(e.target.value)} inputMode="decimal" maxLength={14} className="h-8 text-sm" aria-label={t("space.colBudget")} />
-                <span />
-                <div className="col-span-2 sm:col-span-1 flex justify-end">
-                  <Button size="sm" variant="outline" onClick={() => addCat.mutate()} disabled={addCat.isPending || !newCatName.trim()}>
-                    <Plus className="h-3.5 w-3.5 mr-1" />{t("admin.add")}
-                  </Button>
-                </div>
-                <span />
-              </div>
-              {totalPlan > 0 && <p className="text-xs text-muted-foreground">{t("space.total")}: {formatMoney(totalPlan)} / {t("ledger.outMonth")}: {formatMoney([...catSpent.values()].reduce((a, b) => a + b, 0))}</p>}
             </div>
-          )}
-        </CardContent>
-      </Card>
+          );
+        })}
+      </div>
 
-      {/* Edit dialog */}
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+      {/* FAB */}
+      <button onClick={()=>openAdd("expense")} className="fixed bottom-20 right-4 z-20 h-14 w-14 rounded-full bg-[#8a8a7a] text-white shadow-xl flex items-center justify-center active:scale-95 transition-transform">
+        <Plus className="h-7 w-7" />
+      </button>
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogHeader>
-          <div className="flex items-center gap-3">
-            <span className="rounded-xl bg-gradient-to-br from-fuchsia-500 to-indigo-600 p-2.5 text-white shadow-md shrink-0"><Lock className="h-5 w-5" /></span>
-            <div className="min-w-0">
-              <DialogTitle>{editing ? t("ledger.editEntry") : t("ledger.newEntry")}</DialogTitle>
-              <DialogDescription>{t("ledger.sub")}</DialogDescription>
-            </div>
-          </div>
+          <DialogTitle>{editing ? "Edit Transaction" : "Add Transaction"}</DialogTitle>
+          <DialogDescription>Income / Expense / Transfer — choose account like MyMoney</DialogDescription>
         </DialogHeader>
         <DialogContent>
-          <div className="grid gap-4">
-            <div>
-              <Label>{t("ledger.desc")}</Label>
-              <Input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={120} autoFocus />
+          <div className="flex rounded-full bg-muted p-1 mb-3">
+            {(["expense","income","transfer"] as const).map((k) => (
+              <button key={k} onClick={()=>setTxType(k)} className={cn("flex-1 rounded-full py-1.5 text-sm font-medium capitalize", txType===k ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground")}>{k}</button>
+            ))}
+          </div>
+          <div className="grid gap-3">
+            <div><Label>Title / Category</Label><Input value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} placeholder="e.g. Entertainment, Food" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Category</Label><Select value={form.category_id} onChange={(e)=>setForm({...form,category_id:e.target.value})}><option value="">None</option>{cats?.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select></div>
+              <div><Label>Date</Label><Input type="date" value={form.entry_date} onChange={(e)=>setForm({...form,entry_date:e.target.value})} /></div>
             </div>
-            <div>
-              <Label>{t("space.fBody")}</Label>
-              <Textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={3} maxLength={4000} />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div>
-                <Label>{t("ledger.date")}</Label>
-                <Input type="date" value={draft.entry_date} onChange={(e) => setDraft({ ...draft, entry_date: e.target.value })} />
+            <div><Label>Amount (IDR)</Label><Input value={form.amount} onChange={(e)=>setForm({...form,amount:e.target.value})} inputMode="decimal" placeholder="50000" /></div>
+            {txType === "transfer" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>From Account</Label><Select value={form.account_id} onChange={(e)=>setForm({...form,account_id:e.target.value})}><option value="">Select</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name} — {formatMoney((balances.get(a.id) ?? new Decimal(0)).toNumber())}</option>)}</Select></div>
+                <div><Label>To Account</Label><Select value={form.to_account_id} onChange={(e)=>setForm({...form,to_account_id:e.target.value})}><option value="">Select</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name}</option>)}</Select></div>
               </div>
-              <div>
-                <Label>{t("space.fAmount")}</Label>
-                <Input value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} inputMode="decimal" placeholder="0" />
-              </div>
-              <div>
-                <Label>{t("ledger.inOut")}</Label>
-                <Select value={draft.direction} onChange={(e) => setDraft({ ...draft, direction: e.target.value as "income" | "expense" })}>
-                  <option value="expense">{t("ledger.expense")}</option>
-                  <option value="income">{t("ledger.income")}</option>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>{t("ledger.cat")}</Label>
-              <Select value={draft.category_id} onChange={(e) => setDraft({ ...draft, category_id: e.target.value })}>
-                <option value="">{t("ledger.uncategorized")}</option>
-                {cats?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </Select>
-            </div>
-            {formErr && <div className="text-sm text-destructive">{formErr}</div>}
+            ) : (
+              <div><Label>Account</Label><Select value={form.account_id} onChange={(e)=>setForm({...form,account_id:e.target.value})}><option value="">Select account</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name} — {formatMoney((balances.get(a.id) ?? new Decimal(0)).toNumber())}</option>)}</Select></div>
+            )}
+            <div><Label>Note</Label><Textarea value={form.body} onChange={(e)=>setForm({...form,body:e.target.value})} placeholder="e.g. ganti Flazz trip" rows={2} /></div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={()=>setShowAdd(false)}>Cancel</Button>
+            <Button onClick={()=>saveTx.mutate()} disabled={saveTx.isPending}>{editing ? "Save" : "Add"}</Button>
           </div>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} className="flex-1 sm:flex-none">{t("common.cancel")}</Button>
-          <Button onClick={() => editing && saveEntry.mutate({ d: draft, id: editing.id })} disabled={saveEntry.isPending} className="flex-1 sm:flex-none sm:min-w-[140px]">{saveEntry.isPending ? t("common.loading") : t("space.save")}</Button>
-        </DialogFooter>
+      </Dialog>
+
+      {/* Add Account Dialog */}
+      <Dialog open={showAcc} onOpenChange={setShowAcc}>
+        <DialogHeader><DialogTitle>New Ledger Account</DialogTitle><DialogDescription>BCA, Cash, Savings… each has its own balance</DialogDescription></DialogHeader>
+        <DialogContent>
+          <div className="grid gap-3">
+            <div><Label>Name</Label><Input value={newAcc.name} onChange={(e)=>setNewAcc({...newAcc,name:e.target.value})} placeholder="BCA / Cash / Entertainment" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Icon</Label><Select value={newAcc.icon} onChange={(e)=>setNewAcc({...newAcc,icon:e.target.value})}><option value="wallet">Wallet</option><option value="bca">BCA</option><option value="cash">Cash</option><option value="bank">Bank</option></Select></div>
+              <div><Label>Color</Label><Select value={newAcc.color} onChange={(e)=>setNewAcc({...newAcc,color:e.target.value})}><option value="blue">Blue</option><option value="violet">Violet</option><option value="emerald">Emerald</option><option value="amber">Amber</option><option value="rose">Rose</option><option value="slate">Slate</option></Select></div>
+            </div>
+            <div><Label>Initial Balance (IDR)</Label><Input value={newAcc.initial_balance} onChange={(e)=>setNewAcc({...newAcc,initial_balance:e.target.value})} inputMode="decimal" placeholder="0" /></div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={()=>setShowAcc(false)}>Cancel</Button>
+            <Button onClick={()=>createAcc.mutate()} disabled={createAcc.isPending}>Create</Button>
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
   );
