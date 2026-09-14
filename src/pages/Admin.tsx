@@ -11,6 +11,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { formatMoney } from "@/lib/money";
 import { formatDate, formatDateTime } from "@/lib/datetime";
 import { reconciliationScore } from "@/lib/matcher";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { approvalRisk } from "@/lib/advisor";
 import { useToast } from "@/components/ui/toast";
 import { useRealtime } from "@/hooks/useRealtime";
@@ -264,8 +265,13 @@ export default function Admin() {
     URL.revokeObjectURL(url);
   };
 
+  const refresh = React.useCallback(async () => {
+    await Promise.all([qc.invalidateQueries({ queryKey: ["budgets"] }), qc.invalidateQueries({ queryKey: ["requests"] }), qc.invalidateQueries({ queryKey: ["admin-ledger"] }), qc.invalidateQueries({ queryKey: ["admin-users"] })]);
+    await new Promise((r) => setTimeout(r, 300));
+  }, [qc]);
+
   return (
-    <div className="space-y-6">
+    <PullToRefresh onRefresh={refresh}><div className="space-y-6">
       <div className="rounded-xl bg-gradient-to-r from-primary to-blue-500 text-primary-foreground p-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{t("admin.title")}</h1>
@@ -464,6 +470,6 @@ export default function Admin() {
           <p className="text-xs text-muted-foreground">{t("admin.typeReset")}</p>
         </CardContent>
       </Card>
-    </div>
+    </div></PullToRefresh>
   );
 }

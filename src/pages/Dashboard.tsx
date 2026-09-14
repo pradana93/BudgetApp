@@ -17,6 +17,7 @@ import { achievementsFor, achMeta, isUnlocked, levelOf, xpOf } from "@/lib/gamif
 import { dateLocale, timeAgo } from "@/lib/datetime";
 import { Wallet, TrendingUp, Clock, ArrowDownLeft, ArrowUpRight, Receipt, Trophy } from "lucide-react";
 import AskBudgetApp from "@/components/AskBudgetApp";
+import { PullToRefresh } from "@/components/PullToRefresh";
 
 export default function Dashboard(){
   useRealtime();
@@ -217,7 +218,18 @@ export default function Dashboard(){
   const runway = burn30 > 0 ? Math.floor(totalAvailable / burn30) : null;
   const pulseHealth: "onTrack" | "atRisk" | "over" = pending > 0 && (requests ?? []).filter((r) => r.status === "pending").reduce((s, r) => s + Number(r.amount), 0) > totalAvailable ? "over" : runway !== null && runway <= 7 ? "atRisk" : "onTrack";
 
-  return <div className="space-y-6">
+  const refresh = React.useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["budgets"] }),
+      qc.invalidateQueries({ queryKey: ["requests"] }),
+      qc.invalidateQueries({ queryKey: ["dashboard-ledger"] }),
+      qc.invalidateQueries({ queryKey: ["goals"] }),
+    ]);
+    // small delay for flagship feel
+    await new Promise((r) => setTimeout(r, 350));
+  }, [qc]);
+
+  return <PullToRefresh onRefresh={refresh}><div className="space-y-6">
     <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white p-5 md:p-6 shadow-lg overflow-hidden relative">
       <div aria-hidden className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
       <div aria-hidden className="pointer-events-none absolute -left-8 -bottom-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
@@ -354,6 +366,6 @@ export default function Dashboard(){
         {requests?.length===0 && <div className="text-sm text-muted-foreground">{t("dash.noRequests")}</div>}
         {requests?.slice(0,6).map(r=> <div key={r.id} className="flex justify-between border-b py-2 text-sm"><span>{r.merchant ?? r.category} — {formatMoney(Number(r.amount))}</span><Badge variant={r.status as never}>{r.status}</Badge></div>)}
       </CardContent></Card>
-    </div>
-  </div>;
+      </div>
+    </div></PullToRefresh>;
 }

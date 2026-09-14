@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { Link, useNavigate } from "react-router-dom";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { Wallet } from "lucide-react";
 
 export default function Budgets(){
@@ -66,7 +67,12 @@ export default function Budgets(){
     URL.revokeObjectURL(url);
   };
 
-  return <div className="space-y-4">
+  const refresh = React.useCallback(async () => {
+    await Promise.all([qc.invalidateQueries({ queryKey: ["budgets"] }), qc.invalidateQueries({ queryKey: ["requests"] })]);
+    await new Promise((r) => setTimeout(r, 300));
+  }, [qc]);
+
+  return <PullToRefresh onRefresh={refresh}><div className="space-y-4">
     <div className="flex flex-wrap justify-between items-center gap-2"><h1 className="text-2xl font-bold">{t("budgets.title")}</h1><div className="flex gap-2">
       <Input placeholder={t("budgets.searchPh")} value={bq} onChange={(e)=>setBq(e.target.value)} className="max-w-[200px]" />
       <Button variant="outline" onClick={exportCsv}>{t("budgets.export")}</Button>
@@ -88,5 +94,5 @@ export default function Budgets(){
       {filteredBudgets?.length===0 && <TableRow><TableCell colSpan={isOwner ? 7 : 6} className="text-center text-muted-foreground">{t("req.noMatch")}</TableCell></TableRow>}
       </TableBody></Table>)}
     </CardContent></Card>
-  </div>;
+  </div></PullToRefresh>;
 }

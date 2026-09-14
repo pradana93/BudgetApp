@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -13,6 +13,7 @@ import { formatDate, isOverdue } from "@/lib/datetime";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
 import { useCategories } from "@/hooks/useCategories";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { Receipt } from "lucide-react";
 
 const STATUSES = ["all", "pending", "approved", "rejected", "reconciled"] as const;
@@ -20,6 +21,11 @@ const STATUSES = ["all", "pending", "approved", "rejected", "reconciled"] as con
 export default function Requests(){
   useRealtime();
   const { t, lang } = useLang();
+  const qc = useQueryClient();
+  const refresh = React.useCallback(async () => {
+    await qc.invalidateQueries({ queryKey: ["requests"] });
+    await new Promise((r) => setTimeout(r, 300));
+  }, [qc]);
   const [q, setQ] = React.useState("");
   const [status, setStatus] = React.useState<(typeof STATUSES)[number]>("all");
   const [category, setCategory] = React.useState<string>("all");
@@ -40,7 +46,7 @@ export default function Requests(){
     });
   }, [data, q, status, category]);
 
-  return <div className="space-y-4">
+  return <PullToRefresh onRefresh={refresh}><div className="space-y-4">
     <div className="flex flex-wrap justify-between items-center gap-2"><h1 className="text-2xl font-bold">{t("req.title")}</h1><Link to="/requests/new"><Button>{t("req.new")}</Button></Link></div>
     <Card><CardHeader><CardTitle>{t("req.all")}</CardTitle></CardHeader><CardContent>
       {isLoading ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}</div>
@@ -71,5 +77,5 @@ export default function Requests(){
       {(filtered?.length ?? 0) > visible && <Button variant="outline" className="mt-3" onClick={()=>setVisible((v)=>v + 20)}>{t("req.showMore", { remaining: (filtered?.length ?? 0) - visible })}</Button>}
       </>)}
     </CardContent></Card>
-  </div>;
+  </div></PullToRefresh>;
 }
