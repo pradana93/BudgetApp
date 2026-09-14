@@ -396,31 +396,31 @@ export default function Space() {
     await new Promise((r) => setTimeout(r, 300));
   }, [qc, profile]);
 
-  return <PullToRefresh onRefresh={refresh}><div className="space-y-3">
+  return <PullToRefresh onRefresh={refresh}><div className="space-y-3 overflow-x-hidden">
     {/* Page Header — matches Budgets/Requests pattern */}
-    <div className="flex flex-wrap justify-between items-center gap-2">
+    <div className="flex flex-wrap justify-between items-center gap-2 overflow-hidden">
       <h1 className="text-2xl font-bold">Personal Ledger</h1>
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={exportCsv}><Download className="h-4 w-4 mr-1" />Export</Button>
-        <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}><Bookmark className="h-4 w-4 mr-1" />Templates</Button>
-        <Button variant="outline" size="sm" onClick={() => setShowRecurring(true)}><Repeat className="h-4 w-4 mr-1" />Recurring</Button>
-        <Button variant="outline" size="sm" onClick={() => setShowAcc(true)}><Plus className="h-4 w-4 mr-1" />Ledger</Button>
-        <Button size="sm" onClick={() => openAdd("expense")}><Plus className="h-4 w-4 mr-1" />Transaction</Button>
+        <Button variant="outline" size="sm" onClick={exportCsv} className="hidden sm:inline-flex"><Download className="h-4 w-4 mr-1" />Export</Button><Button variant="outline" size="sm" onClick={exportCsv} className="sm:hidden h-8 w-8 p-0"><Download className="h-4 w-4" /></Button>
+        <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)} className="hidden sm:inline-flex"><Bookmark className="h-4 w-4 mr-1" />Templates</Button><Button variant="outline" size="sm" onClick={() => setShowTemplates(true)} className="sm:hidden h-8 w-8 p-0"><Bookmark className="h-4 w-4" /></Button>
+        <Button variant="outline" size="sm" onClick={() => setShowRecurring(true)} className="hidden sm:inline-flex"><Repeat className="h-4 w-4 mr-1" />Recurring</Button><Button variant="outline" size="sm" onClick={() => setShowRecurring(true)} className="sm:hidden h-8 w-8 p-0"><Repeat className="h-4 w-4" /></Button>
+        <Button variant="outline" size="sm" onClick={() => setShowAcc(true)} className="hidden sm:inline-flex"><Plus className="h-4 w-4 mr-1" />Ledger</Button><Button variant="outline" size="sm" onClick={() => setShowAcc(true)} className="sm:hidden h-8 w-8 p-0"><Wallet className="h-4 w-4" /></Button>
+        <Button size="sm" onClick={() => openAdd("expense")} className="hidden sm:inline-flex"><Plus className="h-4 w-4 mr-1" />Transaction</Button><Button size="sm" onClick={() => openAdd("expense")} className="sm:hidden h-8 w-8 p-0"><Plus className="h-4 w-4" /></Button>
       </div>
     </div>
 
     {/* Stats Summary — inside Card like Dashboard */}
     <Card>
       <CardHeader className="pb-3"><CardTitle className="text-sm">This Month</CardTitle></CardHeader>
-      <CardContent className="pt-2">
-        <div className="flex items-center gap-2 mb-2 text-[11px]">
+      <CardContent className="pt-2 overflow-hidden">
+        <div className="flex items-center gap-2 mb-2 text-[10px] sm:text-[11px] overflow-hidden">
           {lastMonth.exp.greaterThan(0) ? (() => {
             const pct = monthTotals.exp.sub(lastMonth.exp).div(lastMonth.exp).mul(100);
             const up = pct.greaterThan(0);
             return <span className={cn("font-medium", up ? "text-rose-600" : "text-emerald-600")}>{up ? "↑" : "↓"} {Math.abs(pct.toNumber()).toFixed(0)}% vs last month</span>;
           })() : <span className="text-muted-foreground">No data for last month</span>}
         </div>
-        <div className="mb-3">
+        <div className="mb-3 overflow-hidden">
           <div className="text-[10px] text-muted-foreground mb-1">Daily Spending</div>
           <div className="grid grid-cols-7 gap-0.5">
             {Array.from({ length: daysInMonth }, (_, i) => {
@@ -432,18 +432,18 @@ export default function Space() {
             })}
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-          <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 p-2.5 border border-rose-100 dark:border-rose-900/30 overflow-hidden min-w-0">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2">
+          <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 p-2 sm:p-2.5 border border-rose-100 dark:border-rose-900/30 overflow-hidden min-w-0">
             <div className="text-[10px] sm:text-xs text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1"><TrendingDown className="h-3 w-3" />Spent</div>
             <div className="text-xs sm:text-sm font-bold tabular text-rose-700 dark:text-rose-300 mt-0.5 leading-tight truncate">{formatMoney(monthTotals.exp.toNumber())}</div>
             <div className="text-[10px] text-rose-500/60 mt-0.5">{monthTotals.expN} tx</div>
           </div>
-          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 p-2.5 border border-emerald-100 dark:border-emerald-900/30 overflow-hidden min-w-0">
+          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 p-2 sm:p-2.5 border border-emerald-100 dark:border-emerald-900/30 overflow-hidden min-w-0">
             <div className="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1"><TrendingUp className="h-3 w-3" />Earned</div>
             <div className="text-xs sm:text-sm font-bold tabular text-emerald-700 dark:text-emerald-300 mt-0.5 leading-tight truncate">{formatMoney(monthTotals.inc.toNumber())}</div>
             <div className="text-[10px] text-emerald-500/60 mt-0.5">{monthTotals.incN} tx</div>
           </div>
-          <div className="rounded-xl bg-violet-50 dark:bg-violet-950/30 p-2.5 border border-violet-100 dark:border-violet-900/30 overflow-hidden min-w-0">
+          <div className="rounded-xl bg-violet-50 dark:bg-violet-950/30 p-2 sm:p-2.5 border border-violet-100 dark:border-violet-900/30 overflow-hidden min-w-0">
             <div className="text-[10px] sm:text-xs text-violet-600 dark:text-violet-400 font-medium flex items-center gap-1"><Sparkles className="h-3 w-3" />Balance</div>
             <div className="text-xs sm:text-sm font-bold tabular text-violet-700 dark:text-violet-300 mt-0.5 leading-tight truncate">{formatMoney(sums.bal.toNumber())}</div>
             <div className="text-[10px] text-violet-500/60 mt-0.5">{accounts?.length ?? 0} ledgers</div>
@@ -456,8 +456,8 @@ export default function Space() {
     <Card>
       <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center justify-between">Ledger Accounts <span className="text-xs font-normal text-muted-foreground">Tap to filter</span></CardTitle></CardHeader>
       <CardContent>
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
-          <button onClick={() => setAccFilter("all")} className={cn("shrink-0 rounded-lg px-3 py-2 text-left min-w-[100px] border transition-all", accFilter==="all" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border hover:border-primary/30")}>
+        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollbarWidth: "none" }}>
+          <button onClick={() => setAccFilter("all")} className={cn("snap-start shrink-0 rounded-lg px-2.5 sm:px-3 py-2 text-left min-w-[88px] sm:min-w-[100px] border transition-all", accFilter==="all" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border hover:border-primary/30")}>
             <div className="text-[10px] font-medium uppercase tracking-wide">All</div>
             <div className="font-bold text-sm tabular mt-0.5">{formatMoney(totalBalance.toNumber())}</div>
             <div className="text-[11px] opacity-70 mt-0.5">{filtered.length} tx</div>
@@ -467,7 +467,7 @@ export default function Space() {
             const bal = balances.get(a.id) ?? new Decimal(0);
             const active = accFilter===a.id;
             return (
-              <button key={a.id} onClick={() => setAccFilter(active ? "all" : a.id)} className={cn("shrink-0 rounded-lg px-3 py-2 text-left min-w-[100px] border transition-all relative group/acct", active ? "bg-card border-primary shadow-sm" : "bg-card border-border hover:shadow-sm")}>
+              <button key={a.id} onClick={() => setAccFilter(active ? "all" : a.id)} className={cn("snap-start shrink-0 rounded-lg px-2.5 sm:px-3 py-2 text-left min-w-[88px] sm:min-w-[100px] border transition-all relative group/acct", active ? "bg-card border-primary shadow-sm" : "bg-card border-border hover:shadow-sm")}>
                 <div className="flex items-center gap-1.5 mb-1">
                   <span className={cn("h-5 w-5 rounded flex items-center justify-center text-white bg-gradient-to-br shrink-0", GRAD[a.color] ?? GRAD.blue)}><Icon className="h-3 w-3" /></span>
                   <span className="font-medium text-xs truncate">{a.name}</span>
@@ -487,15 +487,15 @@ export default function Space() {
 
     {/* Transactions — inside Card like Requests */}
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 overflow-hidden">
         <CardTitle className="text-sm">Transactions</CardTitle>
-        <div className="flex flex-wrap gap-2 mt-2">
-          <div className="relative">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
+          <div className="relative flex-shrink-0">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Search" value={q} onChange={(e)=>setQ(e.target.value)} className="pl-7 h-8 text-xs max-w-[160px]" />
+            <Input placeholder="Search" value={q} onChange={(e)=>setQ(e.target.value)} className="pl-7 h-8 text-xs w-full sm:max-w-[160px]" />
           </div>
-          <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="h-8 text-xs"><option value="all">All Categories</option><option value="none">None</option>{cats?.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select>
-          <Select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className="h-8 text-xs"><option value="all">All Tags</option>{(tags ?? []).map((t)=><option key={t.id} value={t.id}>{t.name}</option>)}</Select>
+          <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="h-8 text-xs min-w-0 flex-1 sm:flex-none"><option value="all">All Cats</option><option value="none">None</option>{cats?.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+          <Select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className="h-8 text-xs min-w-0 flex-1 sm:flex-none"><option value="all">All Tags</option>{(tags ?? []).map((t)=><option key={t.id} value={t.id}>{t.name}</option>)}</Select>
           <div className="flex items-center rounded-full border bg-card p-0.5">
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" onClick={() => shift(-1)}><ChevronLeft className="h-3.5 w-3.5" /></Button>
             <span className="min-w-[90px] text-center text-[11px] font-semibold capitalize">{monthLabel}</span>
@@ -534,7 +534,7 @@ export default function Space() {
               }, 0);
               return (
                 <div key={date}>
-                  <div className="flex items-center gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 mb-1.5 overflow-hidden">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
                     <span className="h-px flex-1 bg-border" />
                     <span className="text-xs text-muted-foreground tabular">{items.length} • {dayTotal >= 0 ? "+" : ""}{formatMoney(Math.abs(dayTotal))}</span>
@@ -550,9 +550,9 @@ export default function Space() {
                       const amtColor = isTransfer ? "text-blue-600" : e.direction === "income" ? "text-emerald-600" : "text-rose-600";
                       return (
                         <SwipeRow key={e.id} actions={[{ label: "Edit", onClick: () => openEdit(e) }, { label: "Delete", kind: "destructive", onClick: () => setConfirmDelete(e.id) }]}>
-                        <div className="flex items-center gap-2.5 py-1.5 px-1 rounded-lg hover:bg-muted/30 active:bg-muted/50 transition-colors group cursor-pointer" onClick={() => openEdit(e)}>
+                        <div className="flex items-center gap-2 py-1.5 px-1 rounded-lg hover:bg-muted/30 active:bg-muted/50 transition-colors group cursor-pointer overflow-hidden" onClick={() => openEdit(e)}>
                           <span className={cn("h-8 w-8 rounded-lg flex items-center justify-center text-white shrink-0 bg-gradient-to-br shadow-sm", iconGrad)}><Icon className="h-3.5 w-3.5" /></span>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center gap-1.5">
                               <span className="font-medium text-[13px] truncate">{e.title}</span>
                               {isTransfer && <Badge variant="secondary" className="text-[9px] h-4 px-1 shrink-0">transfer</Badge>}{tagsForNote(e.id).map(t => <Badge key={t.id} variant="outline" className="text-[8px] h-3.5 px-1 shrink-0 border-rose-300 text-rose-600">{t.name}</Badge>)}
@@ -588,7 +588,7 @@ export default function Space() {
       <DialogHeader>
         <DialogTitle>{editing ? "Edit Transaction" : "New Transaction"}</DialogTitle>
       </DialogHeader>
-      <DialogContent className="space-y-4">
+      <DialogContent className="space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex rounded-full bg-muted p-1">
           {(["expense","income","transfer"] as const).map((k) => (
             <button key={k} onClick={()=>{setTxType(k); setFormErr(null);}} className={cn("flex-1 rounded-full py-2 text-xs font-medium capitalize flex items-center justify-center gap-1.5 transition-all", txType===k ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground")}>
@@ -599,12 +599,12 @@ export default function Space() {
         <div className="space-y-3">
           <div><Label>Title</Label><Input value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} placeholder="e.g. Groceries, Salary" className="mt-1.5" /></div>
           <div><Label>Amount (IDR)</Label><Input value={form.amount} onChange={(e)=>setForm({...form,amount:e.target.value})} inputMode="decimal" placeholder="50000" className="mt-1.5 text-lg font-semibold tabular" /></div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <div><Label>Category</Label><Select value={form.category_id} onChange={(e)=>setForm({...form,category_id:e.target.value})} className="mt-1.5"><option value="">None</option>{cats?.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select></div>
             <div><Label>Date</Label><Input type="date" value={form.entry_date} onChange={(e)=>setForm({...form,entry_date:e.target.value})} className="mt-1.5" /></div>
           </div>
           {txType === "transfer" ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div><Label>From</Label><Select value={form.account_id} onChange={(e)=>setForm({...form,account_id:e.target.value})} className="mt-1.5"><option value="">Select</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name} — {formatMoney((balances.get(a.id) ?? new Decimal(0)).toNumber())}</option>)}</Select></div>
               <div><Label>To</Label><Select value={form.to_account_id} onChange={(e)=>setForm({...form,to_account_id:e.target.value})} className="mt-1.5"><option value="">Select</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name}</option>)}</Select></div>
             </div>
@@ -640,7 +640,7 @@ export default function Space() {
         <DialogTitle>New Ledger Account</DialogTitle>
         <DialogDescription>Track BCA, Cash, Savings… each with its own balance</DialogDescription>
       </DialogHeader>
-      <DialogContent className="space-y-4">
+      <DialogContent className="space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="space-y-3">
           <div><Label>Name</Label><Input value={newAcc.name} onChange={(e)=>setNewAcc({...newAcc,name:e.target.value})} placeholder="BCA / Cash / Savings" className="mt-1.5" /></div>
           <div className="grid grid-cols-2 gap-3">
