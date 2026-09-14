@@ -10,4 +10,18 @@ export default defineConfig({
   define: {
     __GIT_SHA__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "local"),
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          supabase: ['@supabase/supabase-js'],
+          query: ['@tanstack/react-query'],
+          charts: ['recharts'],
+          editor: ['zustand', 'react-hook-form', 'zod'],
+        },
+      },
+    },
+  },
 })
