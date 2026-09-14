@@ -234,20 +234,20 @@ export default function Space() {
     <Card>
       <CardHeader className="pb-3"><CardTitle className="text-sm">This Month</CardTitle></CardHeader>
       <CardContent className="pt-2">
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 p-3 border border-rose-100 dark:border-rose-900/30">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+          <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 p-2.5 border border-rose-100 dark:border-rose-900/30 overflow-hidden min-w-0">
             <div className="text-[10px] sm:text-xs text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1"><TrendingDown className="h-3 w-3" />Spent</div>
-            <div className="text-sm sm:text-base font-bold tabular text-rose-700 dark:text-rose-300 mt-0.5 leading-tight">{formatMoney(monthTotals.exp.toNumber())}</div>
+            <div className="text-xs sm:text-sm font-bold tabular text-rose-700 dark:text-rose-300 mt-0.5 leading-tight truncate">{formatMoney(monthTotals.exp.toNumber())}</div>
             <div className="text-[10px] text-rose-500/60 mt-0.5">{monthTotals.expN} tx</div>
           </div>
-          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 p-3 border border-emerald-100 dark:border-emerald-900/30">
+          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 p-2.5 border border-emerald-100 dark:border-emerald-900/30 overflow-hidden min-w-0">
             <div className="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1"><TrendingUp className="h-3 w-3" />Earned</div>
-            <div className="text-sm sm:text-base font-bold tabular text-emerald-700 dark:text-emerald-300 mt-0.5 leading-tight">{formatMoney(monthTotals.inc.toNumber())}</div>
+            <div className="text-xs sm:text-sm font-bold tabular text-emerald-700 dark:text-emerald-300 mt-0.5 leading-tight truncate">{formatMoney(monthTotals.inc.toNumber())}</div>
             <div className="text-[10px] text-emerald-500/60 mt-0.5">{monthTotals.incN} tx</div>
           </div>
-          <div className="rounded-xl bg-violet-50 dark:bg-violet-950/30 p-3 border border-violet-100 dark:border-violet-900/30">
+          <div className="rounded-xl bg-violet-50 dark:bg-violet-950/30 p-2.5 border border-violet-100 dark:border-violet-900/30 overflow-hidden min-w-0">
             <div className="text-[10px] sm:text-xs text-violet-600 dark:text-violet-400 font-medium flex items-center gap-1"><Sparkles className="h-3 w-3" />Balance</div>
-            <div className="text-sm sm:text-base font-bold tabular text-violet-700 dark:text-violet-300 mt-0.5 leading-tight">{formatMoney(sums.bal.toNumber())}</div>
+            <div className="text-xs sm:text-sm font-bold tabular text-violet-700 dark:text-violet-300 mt-0.5 leading-tight truncate">{formatMoney(sums.bal.toNumber())}</div>
             <div className="text-[10px] text-violet-500/60 mt-0.5">{accounts?.length ?? 0} ledgers</div>
           </div>
         </div>
