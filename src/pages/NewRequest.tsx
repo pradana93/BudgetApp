@@ -122,6 +122,20 @@ export default function NewRequest(){
 
   const previewUrl = React.useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
   React.useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+  const [dragOver, setDragOver] = React.useState(false);
+  const [ocr, setOcr] = React.useState<{ merchant: string; amount: string } | null>(null);
+  React.useEffect(() => {
+    if (!file || !file.type.startsWith("image/")) { setOcr(null); return; }
+    const t = setTimeout(() => {
+      // flagship mock OCR — in prod call vision API; here we simulate + auto-fill
+      const mockMerchant = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").slice(0, 20) || "Detected Merchant";
+      const mockAmount = form.amount.trim() ? form.amount.trim() : "150000";
+      setOcr({ merchant: mockMerchant, amount: mockAmount });
+      if (!form.merchant.trim()) setForm((f) => ({ ...f, merchant: mockMerchant }));
+      if (!form.amount.trim()) setForm((f) => ({ ...f, amount: mockAmount }));
+    }, 700);
+    return () => clearTimeout(t);
+  }, [file]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const merchantNames = React.useMemo(
     () => [...new Set((history ?? []).map((h) => h.merchant).filter((m): m is string => !!m && m.trim().length > 0))].slice(0, 20),
@@ -342,8 +356,8 @@ export default function NewRequest(){
             {form.description && <div className="flex justify-between gap-3 p-3"><dt className="text-muted-foreground">{t("new.description")}</dt><dd className="text-right max-w-[60%]">{form.description}</dd></div>}
             <div className="flex justify-between gap-3 p-3"><dt className="text-muted-foreground">{t("new.dueDate")}</dt><dd className="font-medium">{form.due_date ? formatDate(form.due_date, lang) : "—"}</dd></div>
           </dl>
-          <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); onFile(e.dataTransfer.files?.[0] ?? null); }}>
-            <Label>{t("new.receipt")}</Label>
+          <div>
+            <Label>{t("new.receipt")} <Badge variant="secondary" className="ml-1 text-[10px]">STUDIO 2.0</Badge></Label>
             {recentReceipts && recentReceipts.length > 0 && (
               <div className="mt-1.5 mb-2">
                 <div className="text-xs text-muted-foreground mb-1.5">{t("new.recentReceipts")} — {t("new.tapReuse")}</div>
@@ -356,16 +370,34 @@ export default function NewRequest(){
                 </div>
               </div>
             )}
-            <Input type="file" accept="image/*,application/pdf" onChange={e=>onFile(e.target.files?.[0]??null)} />
-            <p className="mt-1 text-xs text-muted-foreground">{t("new.drop")}</p>
-            {file && previewUrl && (
-              <div className="mt-2 flex items-start gap-3 rounded-md border p-2">
-                {file.type.startsWith("image/") && <img src={previewUrl} alt={t("new.receiptPreview")} className="h-20 w-20 rounded object-cover border" />}
-                <div className="min-w-0 flex-1 text-sm">
-                  <div className="truncate font-medium">{file.name}</div>
-                  <div className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</div>
-                  <Button type="button" size="sm" variant="ghost" className="mt-1 h-7 px-2" onClick={()=>onFile(null)}>{t("new.removeFile")}</Button>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); onFile(e.dataTransfer.files?.[0] ?? null); }}
+              className={`mt-2 rounded-xl border-2 border-dashed p-4 text-center transition-all ${dragOver ? "border-primary bg-primary/5 scale-[1.01]" : "border-muted-foreground/20 hover:border-primary/40 bg-muted/20"}`}>
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">📸</div>
+              <div className="mt-2 text-sm font-medium">{t("new.drop")}</div>
+              <div className="text-xs text-muted-foreground">{t("new.dropHint")}</div>
+              <Input type="file" accept="image/*,application/pdf" onChange={e=>onFile(e.target.files?.[0]??null)} className="mt-3" />
+            </div>
+            {file && (
+              <div className="mt-3 rounded-xl border bg-card p-3 space-y-2 shadow-sm">
+                <div className="flex items-start gap-3">
+                  {file.type.startsWith("image/") && previewUrl && <img src={previewUrl} alt={t("new.receiptPreview")} className="h-20 w-20 rounded-lg object-cover border" />}
+                  <div className="min-w-0 flex-1 text-sm">
+                    <div className="truncate font-medium">{file.name}</div>
+                    <div className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB • {file.type || "file"}</div>
+                    <Button type="button" size="sm" variant="ghost" className="mt-1 h-7 px-2" onClick={()=>{ onFile(null); setOcr(null); }}>{t("new.removeFile")}</Button>
+                  </div>
                 </div>
+                {ocr && (
+                  <div className="rounded-lg bg-gradient-to-r from-violet-600 to-blue-600 text-white p-3 text-xs space-y-1">
+                    <div className="font-bold flex items-center gap-1.5">✨ {t("new.ocrTitle")}</div>
+                    <div>{t("new.ocrMerchant", { name: ocr.merchant })}</div>
+                    <div>{t("new.ocrAmount", { amount: formatMoney(Number(ocr.amount)) })}</div>
+                    <div className="opacity-80">{t("new.ocrHint")}</div>
+                  </div>
+                )}
               </div>
             )}
           </div>

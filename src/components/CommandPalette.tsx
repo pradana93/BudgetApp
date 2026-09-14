@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 import {
   LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell,
-  Plus, LogOut, Languages, Trophy, History, CalendarDays, NotebookPen, type LucideIcon,
+  Plus, LogOut, Languages, Trophy, History, CalendarDays, NotebookPen, Sparkles, type LucideIcon,
 } from "lucide-react";
 import type { StringKey } from "@/i18n/translations";
 
@@ -22,7 +22,7 @@ type Item = {
 };
 
 /** Spotlight-style command palette: pages, records and actions. */
-export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CommandPalette({ open, onClose, onAsk }: { open: boolean; onClose: () => void; onAsk?: () => void }) {
   const nav = useNavigate();
   const { profile, signOut } = useSession();
   const { t, lang, setLang } = useLang();
@@ -90,12 +90,17 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   };
   const match = (s: string) => !needle || s.toLowerCase().includes(needle) || fuzzy(s);
 
+  const focusAsk: Item = {
+    id: "focus-ask", group: "cmd.actions" as StringKey, label: `${t("ask.title")} — Focus Mode`, hint: "⌘J", icon: Sparkles,
+    run: () => { onClose(); onAsk?.(); },
+  };
   const pages: Item[] = [
     { id: "p-dash", group: "cmd.pages", label: t("nav.dashboard"), icon: LayoutDashboard, run: () => go("/") },
     { id: "p-budgets", group: "cmd.pages", label: t("nav.budgets"), icon: Wallet, run: () => go("/budgets") },
     { id: "p-requests", group: "cmd.pages", label: t("nav.requests"), icon: Receipt, run: () => go("/requests") },
     { id: "p-calendar", group: "cmd.pages", label: t("nav.calendar"), icon: CalendarDays, run: () => go("/calendar") },
     { id: "p-space", group: "cmd.pages", label: t("nav.space"), icon: NotebookPen, run: () => go("/space") },
+    { id: "p-changelog", group: "cmd.pages", label: t("nav.changelogs"), icon: History, run: () => go("/changelogs") },
     ...(profile?.role === "owner"
       ? [{ id: "p-admin", group: "cmd.pages" as StringKey, label: t("nav.admin"), icon: ShieldCheck, run: () => go("/admin") }]
       : []),
@@ -134,7 +139,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     ? recents.map((r, i) => ({ id: `recent-${i}`, group: "cmd.recent" as StringKey, label: r.label, icon: History, run: () => go(r.to) }))
     : [];
 
-  const items = [...recentItems, ...pages, ...records, ...actions].filter((i) => match(i.label) || (i.hint ? match(i.hint) : false));
+  const topFlagship = !needle || match(focusAsk.label) ? [focusAsk] : [];
+  const items = [...topFlagship, ...recentItems, ...pages, ...records, ...actions].filter((i) => match(i.label) || (i.hint ? match(i.hint) : false));
   const safeActive = items.length === 0 ? 0 : Math.min(active, items.length - 1);
   const counts = new Map<StringKey, number>();
   for (const i of items) counts.set(i.group, (counts.get(i.group) ?? 0) + 1);
@@ -179,7 +185,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 <button
                   onClick={() => item.run()}
                   onMouseEnter={() => setActive(idx)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-left ${idx === safeActive ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-left ${item.id === "focus-ask" ? "border border-violet-500/30 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md" : ""} ${item.id !== "focus-ask" && idx === safeActive ? "bg-primary text-primary-foreground" : item.id !== "focus-ask" ? "hover:bg-accent" : ""}`}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
                   <span className="flex-1 truncate">{item.label}</span>

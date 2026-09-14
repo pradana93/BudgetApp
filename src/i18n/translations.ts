@@ -333,6 +333,9 @@ const en = {
   "admin.proposedBy": "by {email}",
   "admin.inbox": "Auto-reconcile inbox",
   "admin.inboxSub": "Xero-style matching — review suggestions, reconcile in bulk.",
+  "admin.kanbanReady": "Ready to reconcile",
+  "admin.kanbanReview": "Needs review",
+  "admin.kanbanEmpty": "Nothing here",
   "admin.score": "Match",
   "admin.ready": "{n} ready",
   "admin.reconcileAll": "Reconcile all ≥ {n}%",
@@ -420,6 +423,9 @@ const en = {
   "risk.review": "Needs review",
   "risk.risky": "Risky",
   "risk.title": "Approval risk",
+  "risk.safeDesc": "Low risk — good to approve",
+  "risk.reviewDesc": "Check carefully",
+  "risk.riskyDesc": "High risk — look closer",
 
   "dup.title": "Possible duplicate",
   "dup.desc": "{n} similar request(s) on file",
@@ -455,6 +461,9 @@ const en = {
 
   "cmd.recent": "Recent",
 
+  "dash.available": "available",
+  "dash.noBurn": "no burn",
+  "dash.runwayBadge": "~{n}d runway",
   "dash.welcome": "Welcome to BudgetApp",
   "dash.welcomeSub": "Create a budget, file your first request, and watch the ledger grow.",
   "dash.compare": "This month vs last month",
@@ -468,6 +477,11 @@ const en = {
   "dash.dSum": "Reconciled sum",
 
   "new.drop": "Drag & drop receipt here, or click to browse",
+  "new.dropHint": "PNG, JPG or PDF up to 10MB — auto-extracts merchant & amount",
+  "new.ocrTitle": "Receipt Studio — auto-filled",
+  "new.ocrMerchant": "Merchant: {name}",
+  "new.ocrAmount": "Amount: {amount}",
+  "new.ocrHint": "Review and edit before submitting — OCR is a helper, not truth.",
   "new.tapReuse": "Tap to reuse",
   "new.recentReceipts": "Your recent receipts",
   "new.reused": "Receipt attached",
@@ -480,6 +494,7 @@ const en = {
 
   "nav.calendar": "Calendar",
   "nav.space": "My Space",
+  "nav.changelogs": "Changelogs",
   "space.title": "My Space",
   "space.sub": "Private budgeting notes only you can see — guaranteed by the database.",
   "space.new": "New note",
@@ -623,6 +638,8 @@ const en = {
   "reward.level": "Level {n}",
   "reward.duo": "Duo scoreboard",
   "reward.you": "You",
+  "changelog.title": "Changelogs",
+  "changelog.sub": "What's new in BudgetApp — flagship updates live here.",
   "reward.viewAll": "View all",
   "reward.unlockedToast": "Achievement unlocked",
 };
@@ -962,6 +979,9 @@ const id: Record<StringKey, string> = {
   "admin.proposedBy": "oleh {email}",
   "admin.inbox": "Kotak rekonsiliasi otomatis",
   "admin.inboxSub": "Pencocokan ala Xero — tinjau saran, rekonsiliasi massal.",
+  "admin.kanbanReady": "Siap rekonsiliasi",
+  "admin.kanbanReview": "Perlu ditinjau",
+  "admin.kanbanEmpty": "Kosong",
   "admin.score": "Kecocokan",
   "admin.ready": "{n} siap",
   "admin.reconcileAll": "Rekonsiliasi semua ≥ {n}%",
@@ -1049,6 +1069,9 @@ const id: Record<StringKey, string> = {
   "risk.review": "Perlu tinjau",
   "risk.risky": "Berisiko",
   "risk.title": "Risiko persetujuan",
+  "risk.safeDesc": "Rendah — aman disetujui",
+  "risk.reviewDesc": "Periksa dengan cermat",
+  "risk.riskyDesc": "Tinggi — perlu perhatian",
 
   "dup.title": "Kemungkinan duplikat",
   "dup.desc": "{n} permintaan mirip tercatat",
@@ -1084,6 +1107,9 @@ const id: Record<StringKey, string> = {
 
   "cmd.recent": "Terkini",
 
+  "dash.available": "tersedia",
+  "dash.noBurn": "tanpa laju",
+  "dash.runwayBadge": "~{n} hari runway",
   "dash.welcome": "Selamat datang di BudgetApp",
   "dash.welcomeSub": "Buat anggaran, kirim permintaan pertama, dan lihat ledger tumbuh.",
   "dash.compare": "Bulan ini vs bulan lalu",
@@ -1097,6 +1123,11 @@ const id: Record<StringKey, string> = {
   "dash.dSum": "Total rekonsiliasi",
 
   "new.drop": "Seret & letakkan struk di sini, atau klik untuk memilih",
+  "new.dropHint": "PNG, JPG atau PDF hingga 10MB — otomatis ekstrak merchant & nominal",
+  "new.ocrTitle": "Receipt Studio — terisi otomatis",
+  "new.ocrMerchant": "Merchant: {name}",
+  "new.ocrAmount": "Nominal: {amount}",
+  "new.ocrHint": "Periksa dan sunting sebelum kirim — OCR hanya bantuan.",
   "new.tapReuse": "Ketuk untuk pakai lagi",
   "new.recentReceipts": "Struk terbaru Anda",
   "new.reused": "Struk dilampirkan",
@@ -1109,6 +1140,7 @@ const id: Record<StringKey, string> = {
 
   "nav.calendar": "Kalender",
   "nav.space": "Ruang Saya",
+  "nav.changelogs": "Changelog",
   "space.title": "Ruang Saya",
   "space.sub": "Catatan anggaran pribadi yang hanya bisa Anda lihat — dijamin oleh database.",
   "space.new": "Catatan baru",
@@ -1252,6 +1284,8 @@ const id: Record<StringKey, string> = {
   "reward.level": "Level {n}",
   "reward.duo": "Papan skor berpasangan",
   "reward.you": "Kamu",
+  "changelog.title": "Changelog",
+  "changelog.sub": "Apa yang baru di BudgetApp — update flagship ada di sini.",
   "reward.viewAll": "Lihat semua",
   "reward.unlockedToast": "Pencapaian terbuka",
 };

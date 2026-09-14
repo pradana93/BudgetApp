@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, AreaChart, Area } from "recharts";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/i18n/LanguageContext";
 import { useSession } from "@/hooks/useSession";
@@ -207,14 +207,35 @@ export default function Dashboard(){
     return items.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()).slice(0, 8);
   }, [ledger, requests]);
 
+  // A: Live Pulse — total available + 30d burn + runway + sparkline
+  const totalAvailable = React.useMemo(() => (budgets ?? []).reduce((s, b) => s + Number(b.available_amount), 0), [budgets]);
+  const burn30 = React.useMemo(() => {
+    const cutoff = Date.now() - 30 * 86_400_000;
+    const rs = (requests ?? []).filter((r) => (r.status === "approved" || r.status === "reconciled") && new Date(r.created_at).getTime() >= cutoff);
+    return rs.reduce((s, r) => s + Number(r.amount), 0) / 30;
+  }, [requests]);
+  const runway = burn30 > 0 ? Math.floor(totalAvailable / burn30) : null;
+  const pulseHealth: "onTrack" | "atRisk" | "over" = pending > 0 && (requests ?? []).filter((r) => r.status === "pending").reduce((s, r) => s + Number(r.amount), 0) > totalAvailable ? "over" : runway !== null && runway <= 7 ? "atRisk" : "onTrack";
+
   return <div className="space-y-6">
-    <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white p-5 md:p-6 flex flex-wrap items-center justify-between gap-3 shadow-lg overflow-hidden relative">
+    <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white p-5 md:p-6 shadow-lg overflow-hidden relative">
       <div aria-hidden className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
-      <div className="relative">
-        <h1 className="text-2xl font-bold tracking-tight">{t(greetKey)}{who ? `, ${who}` : ""}</h1>
-        <p className="text-sm text-white/80 mt-0.5">{today}</p>
+      <div aria-hidden className="pointer-events-none absolute -left-8 -bottom-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t(greetKey)}{who ? `, ${who}` : ""} <span className={`h-2 w-2 rounded-full animate-pulse ${pulseHealth === "over" ? "bg-red-300" : pulseHealth === "atRisk" ? "bg-amber-300" : "bg-emerald-300"}`} /></h1>
+          <p className="text-sm text-white/80 mt-0.5">{today} • {formatMoney(totalAvailable)} {t("dash.available")} • {burn30 > 0 ? `${formatMoney(burn30)}/day` : t("dash.noBurn")}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:block h-12 w-28 opacity-90">
+            <ResponsiveContainer width="100%" height="100%"><AreaChart data={trend}><Area type="monotone" dataKey="total" stroke="#fff" strokeWidth={2} fill="rgba(255,255,255,0.18)" dot={false} /></AreaChart></ResponsiveContainer>
+          </div>
+          <div className="flex flex-col gap-1.5 items-end">
+            <Badge variant="pending" className="bg-white text-indigo-700 hover:bg-white">{t("dash.pendingBadge", { count: pending })}</Badge>
+            {runway !== null && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pulseHealth === "over" ? "bg-red-500/20 text-white border border-red-300/30" : pulseHealth === "atRisk" ? "bg-amber-500/20 text-white border border-amber-300/30" : "bg-emerald-500/20 text-white border border-emerald-300/30"}`}>{t("dash.runwayBadge", { n: runway })}</span>}
+          </div>
+        </div>
       </div>
-      <Badge variant="pending" className="relative">{t("dash.pendingBadge", { count: pending })}</Badge>
     </div>
     {!loading && (budgets?.length ?? 0) === 0 && (requests?.length ?? 0) === 0 && (
       <Card className="overflow-hidden">

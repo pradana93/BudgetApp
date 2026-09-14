@@ -5,13 +5,15 @@ import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, Search, Trophy, CalendarDays, NotebookPen, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Wallet, Receipt, Settings, ShieldCheck, Bell, LogOut, Search, Trophy, CalendarDays, NotebookPen, History, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserAvatar } from "@/components/UserAvatar";
 import { CommandPalette } from "@/components/CommandPalette";
+import { AskDrawer } from "@/components/AskDrawer";
 import { Tour } from "@/components/Tour";
 import { LanguageToggle, useLang } from "@/i18n/LanguageContext";
 import { initialsOf, useAvatarTheme } from "@/lib/avatar";
+import { CHANGELOGS } from "@/lib/changelogs";
 import type { StringKey } from "@/i18n/translations";
 
 const nav = [
@@ -25,6 +27,7 @@ const adminNav = { to: "/admin", key: "nav.admin" as const, icon: ShieldCheck };
 const rewardsNav = { to: "/rewards", key: "nav.rewards" as const, icon: Trophy };
 const calendarNav = { to: "/calendar", key: "nav.calendar" as const, icon: CalendarDays };
 const spaceNav = { to: "/space", key: "nav.space" as const, icon: NotebookPen };
+const changelogNav = { to: "/changelogs", key: "nav.changelogs" as const, icon: History };
 
 type Tab = { to: string; key: StringKey; icon: LucideIcon; badge?: number };
 
@@ -40,6 +43,7 @@ const TITLES: Record<string, StringKey> = {
   "/rewards": "nav.rewards",
   "/calendar": "nav.calendar",
   "/space": "nav.space",
+  "/changelogs": "nav.changelogs",
 };
 
 function titleFor(pathname: string): StringKey {
@@ -53,17 +57,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useSession();
   const { t } = useLang();
   const avatarCls = useAvatarTheme(profile?.id);
-  const baseItems = [...nav.slice(0, 3), calendarNav, spaceNav, rewardsNav, nav[3]];
-  const fullItems = profile?.role === "owner" ? [...baseItems.slice(0, 5), adminNav, baseItems[5]] : baseItems;
+  const baseItems = [...nav.slice(0, 3), calendarNav, spaceNav, changelogNav, rewardsNav, nav[3]];
+  const fullItems = profile?.role === "owner" ? [nav[0], nav[1], nav[2], calendarNav, spaceNav, adminNav, changelogNav, rewardsNav, nav[3]] : baseItems;
   const loc = useLocation();
   const navgt = useNavigate();
   const qc = useQueryClient();
   const [paletteOpen, setPaletteOpen] = React.useState(false);
+  const [askOpen, setAskOpen] = React.useState(false);
   React.useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen((o) => !o);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        setAskOpen(true);
       }
     };
     window.addEventListener("keydown", h);
@@ -80,6 +89,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
     },
     enabled: !!profile,
   });
+  const [changelogNew, setChangelogNew] = React.useState(0);
+  React.useEffect(() => {
+    try {
+      const seen = localStorage.getItem("budgetapp-changelog-seen");
+      if (!seen) setChangelogNew(CHANGELOGS.length);
+      else {
+        const idx = CHANGELOGS.findIndex((c) => c.version === seen);
+        setChangelogNew(idx > 0 ? idx : 0);
+      }
+    } catch { /* */ }
+  }, [loc.pathname]);
   React.useEffect(() => {
     if (!profile) return;
     const ch = supabase.channel("notif-bell")
@@ -125,9 +145,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </button>
           {fullItems.map((n) => {
             const active = loc.pathname === n.to || (n.to !== "/" && loc.pathname.startsWith(n.to));
+            const isChangelog = n.key === "nav.changelogs" && changelogNew > 0;
             return (
               <Link key={n.to} to={n.to} className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${active ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-md shadow-blue-500/25" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}>
-                <n.icon className="h-4 w-4 shrink-0" /> {t(n.key)}
+                <n.icon className="h-4 w-4 shrink-0" /> {t(n.key)} {isChangelog && <span className="ml-auto rounded-full bg-violet-600 text-white text-[10px] px-1.5 py-0.5 leading-none">{changelogNew}</span>}
               </Link>
             );
           })}
@@ -202,7 +223,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <button onClick={() => setPaletteOpen(true)} aria-label={t("cmd.search")} className="md:hidden fixed bottom-24 right-4 z-40 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 p-3.5 text-white shadow-xl active:scale-95 transition-transform">
           <Search className="h-5 w-5" />
         </button>
-        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onAsk={() => setAskOpen(true)} />
+        <AskDrawer open={askOpen} onClose={() => setAskOpen(false)} />
         {profile && <Tour userId={profile.id} />}
       </div>
     </div>

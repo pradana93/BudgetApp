@@ -302,42 +302,55 @@ export default function Admin() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center gap-2">{t("admin.inbox")}
-            {approved.length > 0 && <Badge variant="approved">{t("admin.ready", { n: approved.length })}</Badge>}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">{t("admin.inboxSub")}</p>
-        </CardHeader>
-        <CardContent>
-          {approved.length === 0 ? <div className="text-sm text-muted-foreground">{t("admin.noApproved")}</div> : <>
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Button onClick={() => bulkReconcile(80)} disabled={bulk.running || reconcileOne.isPending}>
-                {bulk.running ? t("admin.reconciling", { done: bulk.done, total: bulk.total }) : t("admin.reconcileAll", { n: 80 })}
-              </Button>
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="font-bold flex items-center gap-2">{t("admin.inbox")} {approved.length > 0 && <Badge variant="secondary" className="bg-white text-slate-900">{t("admin.ready", { n: approved.length })}</Badge>}</div>
+              <div className="text-xs text-white/70">{t("admin.inboxSub")}</div>
             </div>
-            <div className="space-y-3">
-              {approved.map((r) => {
-                const s = scoreOf(r);
-                return (
-                  <div key={r.id} className="rounded-lg border p-3 flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <Link to={`/requests/${r.id}`} className="text-primary underline font-medium">{r.merchant ?? r.category}</Link>
-                        <span className="text-muted-foreground">{formatMoney(Number(r.amount))} • {budgetName(r.budget_id)}</span>
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <div className="h-1.5 flex-1 rounded bg-muted overflow-hidden"><div className="h-1.5 rounded bg-gradient-to-r from-amber-500 via-blue-500 to-emerald-500" style={{ width: `${s.score}%` }} /></div>
-                        <span className="text-xs font-medium tabular whitespace-nowrap">{t("admin.score")} {s.score}</span>
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">{s.reasons.join(" • ")}{s.warnings.length > 0 && <span className="text-destructive"> • {s.warnings.join(" • ")}</span>}</div>
-                    </div>
-                    <Button size="sm" onClick={() => reconcileOne.mutate(r.id)} disabled={reconcileOne.isPending || bulk.running}>{t("admin.reconcile")}</Button>
+            <Button size="sm" variant="secondary" onClick={() => bulkReconcile(80)} disabled={bulk.running || reconcileOne.isPending || approved.filter((r) => scoreOf(r).score >= 80).length === 0}>
+              {bulk.running ? t("admin.reconciling", { done: bulk.done, total: bulk.total }) : t("admin.reconcileAll", { n: 80 })}
+            </Button>
+          </div>
+        </div>
+        <CardContent className="pt-4">
+          {approved.length === 0 ? <div className="text-sm text-muted-foreground py-4 text-center">{t("admin.noApproved")}</div> : (() => {
+            const ready = approved.filter((r) => scoreOf(r).score >= 80);
+            const review = approved.filter((r) => scoreOf(r).score < 80);
+            const KanbanCard = ({ r }: { r: typeof approved[0] }) => {
+              const s = scoreOf(r);
+              const ring = s.score >= 80 ? "border-emerald-500" : s.score >= 50 ? "border-amber-500" : "border-slate-300";
+              return (
+                <div key={r.id} className={`rounded-xl border bg-card p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 ${ring} space-y-2`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <Link to={`/requests/${r.id}`} className="font-medium text-sm text-primary underline line-clamp-1">{r.merchant ?? r.category}</Link>
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded tabular ${s.score >= 80 ? "bg-emerald-500 text-white" : s.score >= 50 ? "bg-amber-500 text-white" : "bg-slate-200 text-slate-700"}`}>{s.score}</span>
                   </div>
-                );
-              })}
-            </div>
-          </>}
+                  <div className="text-xs text-muted-foreground">{formatMoney(Number(r.amount))} • {budgetName(r.budget_id)}</div>
+                  <div className="h-1.5 rounded bg-muted overflow-hidden"><div className={`h-1.5 rounded ${s.score >= 80 ? "bg-emerald-500" : s.score >= 50 ? "bg-amber-500" : "bg-slate-400"}`} style={{ width: `${s.score}%` }} /></div>
+                  <div className="text-[11px] text-muted-foreground line-clamp-2">{s.reasons.slice(0,2).join(" • ")}</div>
+                  <Button size="sm" className="w-full h-7 text-xs" onClick={() => reconcileOne.mutate(r.id)} disabled={reconcileOne.isPending || bulk.running}>{t("admin.reconcile")}</Button>
+                </div>
+              );
+            };
+            return (
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold"><span className="h-2 w-2 rounded-full bg-emerald-500" />{t("admin.kanbanReady")} <Badge variant="approved">{ready.length}</Badge></div>
+                  <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-2 space-y-2 min-h-[120px]">
+                    {ready.length === 0 ? <div className="text-xs text-muted-foreground py-6 text-center">{t("admin.kanbanEmpty")}</div> : ready.map((r) => <KanbanCard key={r.id} r={r} />)}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold"><span className="h-2 w-2 rounded-full bg-amber-500" />{t("admin.kanbanReview")} <Badge variant="secondary">{review.length}</Badge></div>
+                  <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-2 space-y-2 min-h-[120px]">
+                    {review.length === 0 ? <div className="text-xs text-muted-foreground py-6 text-center">{t("admin.kanbanEmpty")}</div> : review.map((r) => <KanbanCard key={r.id} r={r} />)}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 

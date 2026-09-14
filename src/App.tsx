@@ -20,6 +20,7 @@ import Notifications from "@/pages/Notifications";
 import Rewards from "@/pages/Rewards";
 import Calendar from "@/pages/Calendar";
 import Space from "@/pages/Space";
+import Changelogs from "@/pages/Changelogs";
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
@@ -45,6 +46,7 @@ export default function App(){
             <Route path="/rewards" element={<ProtectedRoute><Layout><Rewards /></Layout></ProtectedRoute>} />
             <Route path="/calendar" element={<ProtectedRoute><Layout><Calendar /></Layout></ProtectedRoute>} />
             <Route path="/space" element={<ProtectedRoute><Layout><Space /></Layout></ProtectedRoute>} />
+            <Route path="/changelogs" element={<ProtectedRoute><Layout><Changelogs /></Layout></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

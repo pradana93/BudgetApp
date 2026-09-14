@@ -16,6 +16,7 @@ import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/i18n/LanguageContext";
 import { useCategories } from "@/hooks/useCategories";
+import { ApprovalRiskCard } from "@/components/ApprovalRiskCard";
 
 export default function RequestDetail(){
   const { id } = useParams();
@@ -33,6 +34,7 @@ export default function RequestDetail(){
   const [confirmDelete,setConfirmDelete]=React.useState(false);
   const [confirmUndo,setConfirmUndo]=React.useState(false);
   const [commentBody,setCommentBody]=React.useState("");
+  const [showConfetti,setShowConfetti]=React.useState(false);
   const { categories } = useCategories();
 
   const { data, isLoading } = useQuery({ queryKey:["requests",id], queryFn: async()=>{
@@ -83,13 +85,10 @@ export default function RequestDetail(){
         siblings ?? []
       )
     : [];
-  const riskVariant = risk?.level === "risky" ? "destructive" : risk?.level === "review" ? "pending" : "approved";
-  const riskLabel = risk?.level === "risky" ? t("risk.risky") : risk?.level === "review" ? t("risk.review") : t("risk.safe");
-
   const approve = useMutation({ mutationFn: async()=>{
     const { error } = await supabase.rpc("approve_request",{ p_request_id: id! });
     if(error) throw error;
-  }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["requests"]}); toast({title:t("rd.approved"), action:{ label: t("rd.viewBudget"), onClick: ()=>nav(`/budgets/${data?.budget_id}`) }}); }, onError:(e:Error)=> toast({title:t("rd.approveFailed"), description:e.message, variant:"destructive"}) });
+  }, onSuccess:()=>{ qc.invalidateQueries({queryKey:["requests"]}); setShowConfetti(true); setTimeout(()=>setShowConfetti(false), 1800); toast({title:t("rd.approved"), action:{ label: t("rd.viewBudget"), onClick: ()=>nav(`/budgets/${data?.budget_id}`) }}); }, onError:(e:Error)=> toast({title:t("rd.approveFailed"), description:e.message, variant:"destructive"}) });
 
   const reject = useMutation({ mutationFn: async()=>{
     const { error } = await supabase.rpc("reject_request",{ p_request_id:id!, p_reason: rejection });
@@ -167,7 +166,8 @@ export default function RequestDetail(){
   if(isLoading) return <div className="p-4 text-sm text-muted-foreground">{t("common.loading")}</div>;
   if(!data) return <div className="p-4">{t("rd.notFound")}</div>;
 
-  return <div className="space-y-6 max-w-2xl">
+  return <div className="space-y-6 max-w-2xl relative">
+    {showConfetti && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-3xl animate-bounce">🎉✨🎉</div>}
     <div className="flex justify-between items-start"><div><h1 className="text-2xl font-bold">{data.merchant ?? data.category}</h1><p className="text-sm text-muted-foreground">{data.description}</p></div><Badge variant={data.status as never}>{data.status}</Badge></div>
     <Card><CardHeader><CardTitle>{t("rd.request")}</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">
       <div className="grid grid-cols-2 gap-3"><div><span className="text-muted-foreground">{t("rd.amount")}</span><div className="font-medium">{formatMoney(Number(data.amount))}</div></div><div><span className="text-muted-foreground">{t("rd.category")}</span><div>{data.category}</div></div></div>
@@ -177,15 +177,7 @@ export default function RequestDetail(){
       {receiptUrl ? <div><Label>{t("rd.receipt")}</Label><a href={receiptUrl} target="_blank" rel="noreferrer" className="text-primary underline block">{t("rd.viewReceipt")}</a><img src={receiptUrl} alt="receipt" className="mt-2 max-h-64 rounded border" onError={e=> (e.currentTarget.style.display="none")} /></div> : data.receipt_url ? <div className="text-muted-foreground">{t("rd.receiptSigning", { path: data.receipt_url })}</div> : <div className="text-muted-foreground">{t("rd.noReceipt")}</div>}
     </CardContent></Card>
 
-    {risk && (
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base">{t("risk.title")} <Badge variant={riskVariant}>{riskLabel} {risk.score}</Badge></CardTitle></CardHeader>
-        <CardContent>
-          <div className="h-1.5 rounded bg-muted overflow-hidden mb-2"><div className={`h-1.5 rounded ${risk.level === "risky" ? "bg-destructive" : risk.level === "review" ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${risk.score}%` }} /></div>
-          <ul className="text-sm text-muted-foreground space-y-0.5">{risk.reasons.map((r, i) => <li key={i}>• {r}</li>)}</ul>
-        </CardContent>
-      </Card>
-    )}
+    {risk && <ApprovalRiskCard risk={risk} />}
 
     {dups.length > 0 && (
       <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm space-y-1">
