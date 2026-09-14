@@ -445,6 +445,10 @@ const en = {
   "ask.hint": "Enter to send • AI answers first, falls back to on-device securely",
   "ask.emptyTitle": "Ask anything about your money",
   "ask.emptyBody": "Real-time answers from your budgets & requests. Try a chip above or type your own.",
+  "ask.modeAi": "AI",
+  "ask.modeLocal": "Local",
+  "ask.modeAiHint": "AI — Gemini 2.5 Flash, grounded on your live data",
+  "ask.modeLocalHint": "Local — on-device, instant, private",
 
   "tour.skip": "Skip",
   "tour.next": "Next",
@@ -1091,6 +1095,10 @@ const id: Record<StringKey, string> = {
   "ask.hint": "Enter untuk kirim • AI menjawab dulu, fallback ke on-device dengan aman",
   "ask.emptyTitle": "Tanya apa pun soal uangmu",
   "ask.emptyBody": "Jawaban real-time dari anggaran & permintaan. Ketuk chip di atas atau ketik sendiri.",
+  "ask.modeAi": "AI",
+  "ask.modeLocal": "Lokal",
+  "ask.modeAiHint": "AI — Gemini 2.5 Flash, berbasis data live Anda",
+  "ask.modeLocalHint": "Lokal — di perangkat, instan, privat",
 
   "tour.skip": "Lewati",
   "tour.next": "Lanjut",

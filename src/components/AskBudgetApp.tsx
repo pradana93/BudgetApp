@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { useLang } from "@/i18n/LanguageContext";
 import { useAiAssist } from "@/hooks/useAiAssist";
 import { answerQuestion, getAskSuggestions, type AskCtx } from "@/lib/advisor";
-import { Sparkles, Send, Trash2, Copy, History, Lightbulb, MessageCircle } from "lucide-react";
+import { Sparkles, Send, Trash2, Copy, History, Lightbulb, MessageCircle, Cpu } from "lucide-react";
 
 type Msg = { id: string; role: "user" | "assistant"; text: string; ai: boolean; ts: number };
 
 const STORAGE_KEY = "budgetapp-ask-history-v2";
+const MODE_KEY = "budgetapp-ask-mode";
 
 function load(): Msg[] {
   try {
@@ -31,8 +32,12 @@ export default function AskBudgetApp({ ctx }: { ctx: AskCtx }) {
   const [msgs, setMsgs] = React.useState<Msg[]>(() => load());
   const [copied, setCopied] = React.useState<string | null>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
+  const [mode, setMode] = React.useState<"ai" | "local">(() => {
+    try { const v = localStorage.getItem(MODE_KEY); return v === "local" ? "local" : "ai"; } catch { return "ai"; }
+  });
 
   React.useEffect(() => save(msgs), [msgs]);
+  React.useEffect(() => { try { localStorage.setItem(MODE_KEY, mode); } catch { /* */ } }, [mode]);
   React.useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }); }, [msgs, loading]);
 
   const suggestions = React.useMemo(() => getAskSuggestions(lang), [lang]);
@@ -43,7 +48,7 @@ export default function AskBudgetApp({ ctx }: { ctx: AskCtx }) {
     const umsg: Msg = { id: `u-${Date.now()}`, role: "user", text, ai: false, ts: Date.now() };
     setMsgs((m) => [...m, umsg]);
     setQ("");
-    const r = await ask(text, () => answerQuestion(text, ctx, lang));
+    const r = await ask(text, () => answerQuestion(text, ctx, lang), mode);
     const amsg: Msg = { id: `a-${Date.now()}`, role: "assistant", text: r.text || t("ask.noAnswer"), ai: r.ai, ts: Date.now() };
     setMsgs((m) => [...m, amsg]);
   };
@@ -72,15 +77,22 @@ export default function AskBudgetApp({ ctx }: { ctx: AskCtx }) {
         </div>
       </div>
 
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-1.5"><Lightbulb className="h-4 w-4 text-amber-500" />{t("ask.suggestions")}</CardTitle>
-        <div className="flex flex-wrap gap-1.5 pt-1">
+      <CardHeader className="pb-2 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-sm flex items-center gap-1.5"><Lightbulb className="h-4 w-4 text-amber-500" />{t("ask.suggestions")}</CardTitle>
+          <div className="flex items-center rounded-full border p-0.5 bg-muted/40 text-xs">
+            <button onClick={() => setMode("ai")} className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition ${mode === "ai" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><Sparkles className="h-3 w-3" />{t("ask.modeAi")}</button>
+            <button onClick={() => setMode("local")} className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition ${mode === "local" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><Cpu className="h-3 w-3" />{t("ask.modeLocal")}</button>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
           {suggestions.map((s) => (
             <button key={s.prompt} onClick={() => void send(s.prompt)} className="rounded-full border bg-muted/60 hover:bg-muted px-2.5 py-1 text-xs transition">
               {s.label}
             </button>
           ))}
         </div>
+        <div className="text-[11px] text-muted-foreground">{mode === "ai" ? t("ask.modeAiHint") : t("ask.modeLocalHint")}</div>
       </CardHeader>
 
       <CardContent className="space-y-3">

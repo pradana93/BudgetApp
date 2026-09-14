@@ -13,7 +13,10 @@ export function useAiAssist() {
   const { lang } = useLang();
 
   const ask = React.useCallback(
-    async (question: string, local: () => string | null): Promise<AiAnswer> => {
+    async (question: string, local: () => string | null, mode: "ai" | "local" = "ai"): Promise<AiAnswer> => {
+      if (mode === "local") {
+        return { text: local() ?? "", ai: false };
+      }
       setLoading(true);
       try {
         const {
