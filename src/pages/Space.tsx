@@ -15,8 +15,9 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent } f
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, isValidMoney } from "@/lib/money";
 import { dateLocale } from "@/lib/datetime";
-import { Search, ChevronLeft, ChevronRight, Plus, Trash2, PencilLine, Wallet, ArrowLeftRight, Utensils, Film, Car, Receipt, ShoppingCart, PiggyBank, DollarSign, CreditCard, Landmark, Sparkles, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Plus, Trash2, PencilLine, Wallet, ArrowLeftRight, Utensils, Film, Car, Receipt, ShoppingCart, PiggyBank, DollarSign, CreditCard, Landmark, Sparkles, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SwipeRow } from "@/components/SwipeRow";
 
 type Entry = { id: string; title: string; body: string; amount: number | null; category_id: string | null; direction: "income" | "expense" | "transfer"; entry_date: string; created_at: string; account_id: string | null; transfer_to_account_id: string | null };
 type PCat = { id: string; name: string; color: string; monthly_budget: number | null };
@@ -54,6 +55,8 @@ export default function Space() {
   const [txType, setTxType] = React.useState<"expense" | "income" | "transfer">("expense");
   const [form, setForm] = React.useState({ title: "", body: "", amount: "", category_id: "", account_id: "", to_account_id: "", entry_date: new Date().toISOString().slice(0,10) });
   const [newAcc, setNewAcc] = React.useState({ name: "", icon: "wallet", color: "blue", initial_balance: "" });
+  const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
+  const [formErr, setFormErr] = React.useState<string | null>(null);
 
   const { data: entries } = useQuery({
     queryKey: ["personal-entries", profile?.id],
@@ -142,6 +145,17 @@ export default function Space() {
     return { exp, inc, bal };
   }, [filtered, entries, accounts, curKey]);
 
+  const monthTotals = React.useMemo(() => {
+    let exp = new Decimal(0), inc = new Decimal(0), expN = 0, incN = 0;
+    for (const e of entries ?? []) {
+      if (e.entry_date.slice(0,7) !== curKey) continue;
+      const amt = new Decimal(e.amount ?? 0);
+      if (e.direction === "expense") { exp = exp.add(amt); expN++; }
+      else if (e.direction === "income") { inc = inc.add(amt); incN++; }
+    }
+    return { exp, inc, expN, incN };
+  }, [entries, curKey]);
+
   const grouped = React.useMemo(() => {
     const map = new Map<string, Entry[]>();
     for (const e of filtered) {
@@ -153,25 +167,28 @@ export default function Space() {
   }, [filtered]);
 
   const shift = (d: number) => setYm((v) => { const dt = new Date(v.y, v.m + d, 1); return { y: dt.getFullYear(), m: dt.getMonth() }; });
-  const openAdd = (type: "expense"|"income"|"transfer" = "expense") => { setTxType(type); setForm({ title: "", body: "", amount: "", category_id: cats?.[0]?.id ?? "", account_id: accounts?.[0]?.id ?? "", to_account_id: accounts?.[1]?.id ?? "", entry_date: new Date().toISOString().slice(0,10) }); setEditing(null); setShowAdd(true); };
-  const openEdit = (e: Entry) => { setEditing(e); setTxType(e.direction as "expense"|"income"|"transfer"); setForm({ title: e.title, body: e.body, amount: e.amount != null ? String(e.amount) : "", category_id: e.category_id ?? "", account_id: e.account_id ?? "", to_account_id: e.transfer_to_account_id ?? "", entry_date: e.entry_date.slice(0,10) }); setShowAdd(true); };
+  const openAdd = (type: "expense"|"income"|"transfer" = "expense") => { setTxType(type); setForm({ title: "", body: "", amount: "", category_id: cats?.[0]?.id ?? "", account_id: accounts?.[0]?.id ?? "", to_account_id: accounts?.[1]?.id ?? "", entry_date: new Date().toISOString().slice(0,10) }); setEditing(null); setFormErr(null); setShowAdd(true); };
+  const openEdit = (e: Entry) => { setEditing(e); setTxType(e.direction as "expense"|"income"|"transfer"); setForm({ title: e.title, body: e.body, amount: e.amount != null ? String(e.amount) : "", category_id: e.category_id ?? "", account_id: e.account_id ?? "", to_account_id: e.transfer_to_account_id ?? "", entry_date: e.entry_date.slice(0,10) }); setFormErr(null); setShowAdd(true); };
 
   const saveTx = useMutation({
     mutationFn: async () => {
       if (!profile) throw new Error("no user");
-      if (!form.title.trim() || !isValidMoney(form.amount) || Number(form.amount) <= 0) throw new Error("Title and amount required");
-      if (txType !== "transfer" && !form.account_id) throw new Error("Select account");
-      if (txType === "transfer" && (!form.account_id || !form.to_account_id || form.account_id === form.to_account_id)) throw new Error("Select two different accounts");
+      if (!form.title.trim()) { setFormErr("Title is required"); throw new Error("_validation"); }
+      if (!isValidMoney(form.amount) || Number(form.amount) <= 0) { setFormErr("Amount must be greater than 0"); throw new Error("_validation"); }
+      if (txType !== "transfer" && !form.account_id) { setFormErr("Select a ledger account"); throw new Error("_validation"); }
+      if (txType === "transfer" && (!form.account_id || !form.to_account_id)) { setFormErr("Select both From and To accounts"); throw new Error("_validation"); }
+      if (txType === "transfer" && form.account_id === form.to_account_id) { setFormErr("From and To accounts must be different"); throw new Error("_validation"); }
+      setFormErr(null);
       const payload: Record<string, unknown> = { user_id: profile.id, title: form.title.trim().slice(0,120), body: form.body.slice(0,4000), amount: Number(form.amount), category_id: form.category_id || null, direction: txType, entry_date: form.entry_date, account_id: form.account_id || null, transfer_to_account_id: txType === "transfer" ? form.to_account_id : null };
       if (editing) { const { error } = await supabase.from("personal_notes").update(payload).eq("id", editing.id); if (error) throw error; }
       else { const { error } = await supabase.from("personal_notes").insert(payload); if (error) throw error; }
     },
-    onSuccess: () => { setShowAdd(false); setEditing(null); qc.invalidateQueries({ queryKey: ["personal-entries", profile?.id] }); toast({ title: "Saved" }); },
-    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
+    onSuccess: () => { setShowAdd(false); setEditing(null); setFormErr(null); qc.invalidateQueries({ queryKey: ["personal-entries", profile?.id] }); try { navigator.vibrate?.(15); } catch { /* vibrate not supported */ } toast({ title: "Saved" }); },
+    onError: (e: Error) => { if (e.message !== "_validation") toast({ title: "Failed", description: e.message, variant: "destructive" }); },
   });
   const delTx = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("personal_notes").delete().eq("id", id); if (error) throw error; },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["personal-entries", profile?.id] }); toast({ title: "Deleted" }); },
+    onSuccess: () => { setConfirmDelete(null); qc.invalidateQueries({ queryKey: ["personal-entries", profile?.id] }); try { navigator.vibrate?.([10, 30, 10]); } catch { /* vibrate not supported */ } toast({ title: "Deleted" }); },
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
   });
   const createAcc = useMutation({
@@ -186,7 +203,24 @@ export default function Space() {
     onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
   });
 
+  const delAcc = useMutation({
+    mutationFn: async (id: string) => { const { error } = await supabase.from("personal_accounts").delete().eq("id", id); if (error) throw error; },
+    onSuccess: () => { setConfirmDelete(null); qc.invalidateQueries({ queryKey: ["personal-accounts", profile?.id] }); qc.invalidateQueries({ queryKey: ["personal-entries", profile?.id] }); toast({ title: "Account deleted" }); },
+    onError: (e: Error) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
+  });
+
   const totalBalance = [...balances.values()].reduce((a,b) => a.add(b), new Decimal(0));
+
+  const isLoading = !entries && !cats && !accounts;
+
+  if (isLoading) return (
+    <div className="space-y-5 max-w-5xl animate-fade-up">
+      <div className="rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 p-5 md:p-6 h-[180px]" />
+      <div className="flex gap-2">{[1,2,3].map(i => <div key={i} className="skeleton h-9 w-24 rounded-full" />)}</div>
+      <div className="flex gap-3 overflow-x-auto pb-2">{[1,2,3].map(i => <div key={i} className="skeleton h-[120px] w-[160px] rounded-2xl shrink-0" />)}</div>
+      <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="skeleton h-[72px] rounded-xl" />)}</div>
+    </div>
+  );
 
   return (
     <div className="space-y-5 max-w-5xl">
@@ -208,13 +242,13 @@ export default function Space() {
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-white/10 backdrop-blur p-3 border border-white/15">
               <div className="text-xs text-white/70 flex items-center gap-1.5"><TrendingDown className="h-3.5 w-3.5" /> EXPENSE</div>
-              <div className="font-bold text-lg tabular mt-0.5">{formatMoney(sums.exp.toNumber())}</div>
-              <div className="text-[11px] text-white/60">{filtered.filter(e=>e.direction==="expense").length} records</div>
+              <div className="font-bold text-lg tabular mt-0.5">{formatMoney(monthTotals.exp.toNumber())}</div>
+              <div className="text-[11px] text-white/60">{monthTotals.expN} records</div>
             </div>
             <div className="rounded-xl bg-white/10 backdrop-blur p-3 border border-white/15">
               <div className="text-xs text-white/70 flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" /> INCOME</div>
-              <div className="font-bold text-lg tabular mt-0.5">{formatMoney(sums.inc.toNumber())}</div>
-              <div className="text-[11px] text-white/60">{filtered.filter(e=>e.direction==="income").length} records</div>
+              <div className="font-bold text-lg tabular mt-0.5">{formatMoney(monthTotals.inc.toNumber())}</div>
+              <div className="text-[11px] text-white/60">{monthTotals.incN} records</div>
             </div>
             <div className="rounded-xl bg-white text-violet-700 p-3 shadow-md">
               <div className="text-xs text-violet-600/70 flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> BALANCE</div>
@@ -232,6 +266,9 @@ export default function Space() {
           <span className="min-w-[140px] text-center text-sm font-semibold capitalize px-2">{monthLabel}</span>
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full" onClick={() => shift(1)}><ChevronRight className="h-4 w-4" /></Button>
         </div>
+        {ym.y !== now0.getFullYear() || ym.m !== now0.getMonth() ? (
+          <Button variant="outline" size="sm" className="h-8 rounded-full text-xs gap-1.5" onClick={() => setYm({ y: now0.getFullYear(), m: now0.getMonth() })}><CalendarClock className="h-3.5 w-3.5" />Today</Button>
+        ) : null}
         <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="h-9 text-sm rounded-full bg-card"><option value="all">All Categories</option><option value="none">None</option>{cats?.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select>
         <div className="relative flex-1 min-w-[160px] max-w-xs ml-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -255,11 +292,12 @@ export default function Space() {
             const bal = balances.get(a.id) ?? new Decimal(0);
             const active = accFilter===a.id;
             return (
-              <button key={a.id} onClick={() => setAccFilter(active ? "all" : a.id)} className={cn("shrink-0 rounded-2xl p-4 text-left min-w-[160px] border-2 transition-all", active ? "bg-card border-violet-500 shadow-lg scale-[1.02]" : "bg-card border-border hover:shadow-md")}>
+              <button key={a.id} onClick={() => setAccFilter(active ? "all" : a.id)} className={cn("shrink-0 rounded-2xl p-4 text-left min-w-[160px] border-2 transition-all relative group/acct", active ? "bg-card border-violet-500 shadow-lg scale-[1.02]" : "bg-card border-border hover:shadow-md")}>
                 <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center mb-2 text-white bg-gradient-to-br", GRAD[a.color] ?? GRAD.blue)}><Icon className="h-4 w-4" /></div>
                 <div className="font-bold text-sm truncate">{a.name}</div>
                 <div className="tabular font-bold text-primary">{formatMoney(bal.toNumber())}</div>
                 <div className="text-xs text-muted-foreground">Init {formatMoney(Number(a.initial_balance))}</div>
+                <button onClick={(ev) => { ev.stopPropagation(); setConfirmDelete("acc:" + a.id); }} className="hidden group-hover/acct:flex absolute top-2 right-2 h-5 w-5 rounded-md bg-destructive/10 text-destructive items-center justify-center hover:bg-destructive/20 transition-colors"><Trash2 className="h-3 w-3" /></button>
               </button>
             );
           })}
@@ -273,14 +311,19 @@ export default function Space() {
       {/* Transactions — grouped, BudgetApp cards, all buttons work */}
       <div className="space-y-3">
         {grouped.length===0 ? (
-          <Card className="border-dashed"><CardContent className="py-12 text-center space-y-3">
-            <div className="mx-auto h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center"><Wallet className="h-6 w-6 text-primary" /></div>
+          <Card className="border-dashed"><CardContent className="py-12 text-center space-y-3 animate-fade-up">
+            <div className="mx-auto h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center text-white shadow-lg"><Wallet className="h-6 w-6" /></div>
             <div className="font-semibold">No transactions this month</div>
-            <div className="text-sm text-muted-foreground">Add Income, Expense or Transfer to your ledgers</div>
+            <div className="text-sm text-muted-foreground max-w-xs mx-auto">Track your daily spending, income, and transfers between ledgers.</div>
             <div className="flex justify-center gap-2 pt-2">
               <Button onClick={()=>openAdd("expense")} variant="outline"><ArrowDownCircle className="h-4 w-4 mr-1.5" /> Expense</Button>
               <Button onClick={()=>openAdd("income")} className="bg-emerald-600 hover:bg-emerald-700"><ArrowUpCircle className="h-4 w-4 mr-1.5" /> Income</Button>
               <Button onClick={()=>openAdd("transfer")} variant="secondary"><ArrowLeftRight className="h-4 w-4 mr-1.5" /> Transfer</Button>
+            </div>
+            <div className="pt-3 flex flex-wrap justify-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> Expenses reduce balance</span>
+              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Income increases it</span>
+              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> Transfers move between ledgers</span>
             </div>
           </CardContent></Card>
         ) : grouped.map(([date, items]) => {
@@ -303,11 +346,13 @@ export default function Space() {
                   const iconGrad = isTransfer ? "from-blue-500 to-cyan-500" : e.direction === "income" ? "from-emerald-500 to-teal-500" : cat ? GRAD[cat.color] ?? GRAD.slate : "from-rose-500 to-pink-500";
                   const amountColor = isTransfer ? "text-blue-600" : e.direction === "income" ? "text-emerald-600" : "text-rose-600";
                   return (
-                    <Card key={e.id} className="overflow-hidden hover:shadow-md transition-shadow group">
+                    <SwipeRow key={e.id} actions={[{ label: "Delete", kind: "destructive", onClick: () => setConfirmDelete(e.id) }]}>
+                    <Card className="overflow-hidden hover:shadow-md transition-shadow group">
                       <CardContent className="p-3 flex items-center gap-3">
                         <span className={cn("h-10 w-10 rounded-xl flex items-center justify-center text-white shrink-0 bg-gradient-to-br shadow-sm", iconGrad)}><Icon className="h-5 w-5" /></span>
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm truncate flex items-center gap-1.5">{cat?.name ?? e.title} {isTransfer && <Badge variant="secondary" className="text-[10px] h-5">Transfer</Badge>}</div>
+                          <div className="font-semibold text-sm truncate flex items-center gap-1.5">{e.title} {isTransfer && <Badge variant="secondary" className="text-[10px] h-5">Transfer</Badge>}</div>
+                          {cat && <div className="text-[11px] text-muted-foreground mt-0.5">{cat.name}</div>}
                           <div className="flex flex-wrap items-center gap-1.5 text-xs mt-0.5">
                             {isTransfer ? (
                               <>
@@ -329,11 +374,13 @@ export default function Space() {
                           <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={()=>openEdit(e)}><PencilLine className="h-4 w-4" /></Button>
                           <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50" onClick={()=>delTx.mutate(e.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
-                        <div className="sm:hidden flex gap-1">
+                        <div className="sm:hidden flex gap-1.5">
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={()=>openEdit(e)}><PencilLine className="h-3.5 w-3.5" /></Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50" onClick={()=>setConfirmDelete(e.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                       </CardContent>
                     </Card>
+                    </SwipeRow>
                   );
                 })}
               </div>
@@ -378,6 +425,7 @@ export default function Space() {
             )}
             <div><Label>Note</Label><Textarea value={form.body} onChange={(e)=>setForm({...form,body:e.target.value})} placeholder="e.g. ganti Flazz trip" rows={2} /></div>
           </div>
+          {formErr && <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2 text-sm text-destructive">{formErr}</div>}
           <div className="flex justify-end gap-2 pt-3">
             <Button variant="outline" onClick={()=>setShowAdd(false)}>Cancel</Button>
             <Button onClick={()=>saveTx.mutate()} disabled={saveTx.isPending}>{editing ? "Save" : "Add"} {txType}</Button>
@@ -400,6 +448,24 @@ export default function Space() {
           <div className="flex justify-end gap-2 pt-3">
             <Button variant="outline" onClick={()=>setShowAcc(false)}>Cancel</Button>
             <Button onClick={()=>createAcc.mutate()} disabled={createAcc.isPending}>Create Ledger</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(null); }}>
+        <DialogHeader>
+          <DialogTitle>{confirmDelete?.startsWith("acc:") ? "Delete Account" : "Delete Transaction"}</DialogTitle>
+          <DialogDescription>{confirmDelete?.startsWith("acc:") ? "This will permanently remove this ledger account and cannot be undone." : "This action cannot be undone. The transaction will be permanently removed from your ledger."}</DialogDescription>
+        </DialogHeader>
+        <DialogContent>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => {
+              if (!confirmDelete) return;
+              if (confirmDelete.startsWith("acc:")) { delAcc.mutate(confirmDelete.slice(4)); }
+              else { delTx.mutate(confirmDelete); }
+            }} disabled={delTx.isPending || delAcc.isPending}>{(delTx.isPending || delAcc.isPending) ? "Deleting…" : "Delete"}</Button>
           </div>
         </DialogContent>
       </Dialog>
