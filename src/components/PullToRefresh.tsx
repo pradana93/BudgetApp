@@ -4,6 +4,7 @@ import { RefreshCw } from "lucide-react";
 export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promise<void> | void; children: React.ReactNode }) {
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const indicatorRef = React.useRef<HTMLDivElement>(null);
+  const iconWrapRef = React.useRef<HTMLDivElement>(null);
   const iconRef = React.useRef<HTMLDivElement>(null);
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -11,7 +12,6 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
   const startY = React.useRef<number | null>(null);
   const threshold = 52;
 
-  // block native Chrome pull-to-refresh globally while mounted
   React.useEffect(() => {
     const html = document.documentElement;
     const prevHtml = html.style.overscrollBehaviorY;
@@ -28,23 +28,24 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
     pullRef.current = p;
     const ind = indicatorRef.current;
     const ic = iconRef.current;
+    const wrap = iconWrapRef.current;
     if (!ind) return;
-    const h = refreshing ? 56 : p > 0 ? Math.min(56, p) : 0;
-    ind.style.height = `${h}px`;
+    const y = refreshing ? 0 : p > 0 ? Math.min(p - 56, 0) : -56;
+    ind.style.transform = `translateY(${y}px)`;
+    ind.style.opacity = p > 4 || refreshing ? "1" : "0";
     if (ic && !refreshing) {
       const progress = Math.min(1, p / threshold);
       ic.style.transform = `rotate(${progress * 360}deg)`;
       const ready = progress >= 1;
-      const parent = ic.parentElement as HTMLElement | null;
-      if (parent) {
+      if (wrap) {
         if (ready) {
-          parent.classList.add("bg-gradient-to-br", "from-violet-600", "to-blue-600", "text-white", "border-violet-500/40");
-          parent.classList.remove("bg-white", "border-border");
+          wrap.classList.add("bg-gradient-to-br", "from-violet-600", "to-blue-600", "text-white", "border-violet-500/40", "shadow-lg");
+          wrap.classList.remove("bg-white", "border-border", "shadow-md");
           (ic.firstChild as HTMLElement)?.classList.add("text-white");
           (ic.firstChild as HTMLElement)?.classList.remove("text-muted-foreground");
         } else {
-          parent.classList.remove("bg-gradient-to-br", "from-violet-600", "to-blue-600", "text-white", "border-violet-500/40");
-          parent.classList.add("bg-white", "border-border");
+          wrap.classList.remove("bg-gradient-to-br", "from-violet-600", "to-blue-600", "text-white", "border-violet-500/40", "shadow-lg");
+          wrap.classList.add("bg-white", "border-border", "shadow-md");
           (ic.firstChild as HTMLElement)?.classList.remove("text-white");
           (ic.firstChild as HTMLElement)?.classList.add("text-muted-foreground");
         }
@@ -55,61 +56,51 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
   React.useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-
-    const isAtTop = () => {
-      // window + element + documentElement all at top
-      const winTop = window.scrollY <= 2 && document.documentElement.scrollTop <= 2 && document.body.scrollTop <= 2;
-      return winTop && el.scrollTop <= 0;
-    };
+    const isAtTop = () => window.scrollY <= 2 && document.documentElement.scrollTop <= 2 && document.body.scrollTop <= 2 && el.scrollTop <= 0;
 
     const onTouchStart = (e: TouchEvent) => {
       if (refreshing) return;
       if (!isAtTop()) return;
       startY.current = e.touches[0].clientY;
+      const ind = indicatorRef.current;
+      if (ind) ind.style.transition = "none";
     };
 
     const onTouchMove = (e: TouchEvent) => {
       if (startY.current === null || refreshing) return;
-      const y = e.touches[0].clientY;
-      const delta = y - startY.current;
-      if (delta <= 0) { setPullDOM(0); return; }
-      if (!isAtTop() && delta > 0) { setPullDOM(0); return; }
-      // easy pull: 0.72 rubber, cap 92
+      const delta = e.touches[0].clientY - startY.current;
+      if (delta <= 0) { requestAnimationFrame(() => setPullDOM(0)); return; }
+      if (!isAtTop() && delta > 0) { requestAnimationFrame(() => setPullDOM(0)); return; }
       const p = Math.min(delta * 0.72, 92);
-      setPullDOM(p);
-      // prevent native Chrome refresh when pulling
-      if (p > 8) {
-        e.preventDefault();
-      }
+      requestAnimationFrame(() => setPullDOM(p));
+      if (p > 8) e.preventDefault();
     };
 
     const onTouchEnd = async () => {
       if (startY.current === null) return;
       const p = pullRef.current;
       startY.current = null;
+      const ind = indicatorRef.current;
+      if (ind) ind.style.transition = "transform 420ms cubic-bezier(0.22,1,0.36,1), opacity 260ms ease";
       if (p >= threshold && !refreshing) {
         setRefreshing(true);
         try { if (navigator.vibrate) navigator.vibrate(20); } catch { /* */ }
-        // lock indicator at 56
         requestAnimationFrame(() => setPullDOM(56));
         try { await onRefresh(); } finally {
           setTimeout(() => {
             setRefreshing(false);
-            setPullDOM(0);
-          }, 400);
+            requestAnimationFrame(() => setPullDOM(0));
+          }, 550);
         }
       } else {
-        setPullDOM(0);
+        requestAnimationFrame(() => setPullDOM(0));
       }
     };
 
-    // must be non-passive to call preventDefault
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
     el.addEventListener("touchend", onTouchEnd, { passive: true });
-    // also listen on window for edge case where start was on body
     window.addEventListener("touchend", onTouchEnd, { passive: true });
-
     return () => {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
@@ -118,28 +109,27 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
     };
   }, [refreshing, onRefresh]);
 
-  // keep DOM in sync when refreshing toggles
   React.useEffect(() => {
+    const ind = indicatorRef.current;
+    if (!ind) return;
+    ind.style.transition = "transform 420ms cubic-bezier(0.22,1,0.36,1), opacity 260ms ease";
     if (refreshing) setPullDOM(56);
     else if (pullRef.current === 0) setPullDOM(0);
   }, [refreshing]);
 
   return (
-    <div
-      ref={wrapRef}
-      className="relative"
-      style={{ overscrollBehaviorY: "contain", touchAction: "pan-y" }}
-    >
+    <div ref={wrapRef} className="relative" style={{ overscrollBehaviorY: "contain", touchAction: "pan-y" }}>
       <div
         ref={indicatorRef}
-        className="pointer-events-none flex justify-center overflow-hidden will-change-[height]"
-        style={{ height: 0, transition: refreshing ? "height 180ms ease" : pullRef.current > 0 ? "none" : "height 220ms ease" }}
+        className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center will-change-transform"
+        style={{ height: 56, transform: "translateY(-56px)", opacity: 0 }}
         aria-hidden
       >
         <div
-          className={`mt-2 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md border will-change-transform ${refreshing ? "border-primary/30" : "border-border"}`}
+          ref={iconWrapRef}
+          className="mt-2 flex h-9 w-9 items-center justify-center rounded-full bg-white border shadow-md will-change-transform"
         >
-          <div ref={iconRef} className={`flex items-center justify-center ${refreshing ? "animate-spin" : ""}`}>
+          <div ref={iconRef} className={`flex items-center justify-center will-change-transform ${refreshing ? "animate-spin" : ""}`}>
             <RefreshCw className={`h-4 w-4 ${refreshing ? "text-primary" : "text-muted-foreground"}`} />
           </div>
         </div>
