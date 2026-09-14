@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/useSession";
 import { useLang } from "@/i18n/LanguageContext";
 import { useToast } from "@/components/ui/toast";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent } f
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, isValidMoney } from "@/lib/money";
 import { dateLocale } from "@/lib/datetime";
-import { Search, ChevronLeft, ChevronRight, Plus, Trash2, PencilLine, Wallet, ArrowLeftRight, Utensils, Film, Car, Receipt, ShoppingCart, PiggyBank, DollarSign, CreditCard, Landmark, Sparkles, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, CalendarClock } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Plus, Trash2, Wallet, ArrowLeftRight, Utensils, Film, Car, Receipt, ShoppingCart, PiggyBank, DollarSign, CreditCard, Landmark, Sparkles, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SwipeRow } from "@/components/SwipeRow";
 
@@ -214,131 +214,125 @@ export default function Space() {
   const isLoading = !entries && !cats && !accounts;
 
   if (isLoading) return (
-    <div className="space-y-5 max-w-5xl animate-fade-up">
-      <div className="rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 p-5 md:p-6 h-[180px]" />
-      <div className="flex gap-2">{[1,2,3].map(i => <div key={i} className="skeleton h-9 w-24 rounded-full" />)}</div>
-      <div className="flex gap-3 overflow-x-auto pb-2">{[1,2,3].map(i => <div key={i} className="skeleton h-[120px] w-[160px] rounded-2xl shrink-0" />)}</div>
-      <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="skeleton h-[72px] rounded-xl" />)}</div>
+    <div className="space-y-3 max-w-5xl animate-fade-up">
+      <div className="rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 p-4 h-[100px] sm:h-[140px]" />
+      <div className="flex gap-2 overflow-x-auto pb-1">{[1,2,3].map(i => <div key={i} className="skeleton h-[60px] w-[110px] rounded-xl shrink-0" />)}</div>
+      <div className="space-y-1.5">{[1,2,3].map(i => <div key={i} className="skeleton h-[52px] rounded-lg" />)}</div>
     </div>
   );
 
   return (
-    <div className="space-y-4 sm:space-y-5 max-w-5xl">
-      {/* BudgetApp Premium Hero */}
-      <div className="rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 text-white p-5 md:p-6 shadow-lg overflow-hidden relative">
-        <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
-        <div aria-hidden className="pointer-events-none absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="rounded-2xl bg-white/15 p-3 backdrop-blur"><Wallet className="h-6 w-6" /></span>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight leading-tight">Personal Ledger <Badge variant="secondary" className="bg-white text-violet-700 text-[10px] align-middle ml-1">PREMIUM</Badge></h1>
-                <p className="text-xs sm:text-sm text-white/85 line-clamp-2">Private by RLS — Income, Expense & Transfer across your Accounts</p>
-              </div>
+    <div className="space-y-3 max-w-5xl">
+      {/* Ultra-Compact Premium Hero */}
+      <div className="rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 text-white p-3 sm:p-4 shadow-lg overflow-hidden relative">
+        <div aria-hidden className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative space-y-2.5">
+          {/* Title row */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="rounded-xl bg-white/15 p-1.5 sm:p-2 backdrop-blur shrink-0"><Wallet className="h-4 w-4 sm:h-5 sm:w-5" /></span>
+              <h1 className="text-base sm:text-lg font-bold tracking-tight truncate">Personal Ledger <Badge variant="secondary" className="bg-white/90 text-violet-700 text-[8px] sm:text-[9px] px-1.5 py-0 h-4 align-middle">PRO</Badge></h1>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setShowAcc(true)} className="bg-white text-violet-700 hover:bg-white/90"><Plus className="h-4 w-4 mr-1" /> Account</Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowAcc(true)} className="h-7 sm:h-8 bg-white/90 text-violet-700 hover:bg-white text-xs px-2 sm:px-3 shrink-0"><Plus className="h-3 w-3 mr-1" />Ledger</Button>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="rounded-xl bg-white/10 backdrop-blur p-3 border border-white/15">
-              <div className="text-xs text-white/70 flex items-center gap-1.5"><TrendingDown className="h-3.5 w-3.5" /> EXPENSE</div>
-              <div className="font-bold text-sm sm:text-lg tabular mt-0.5 truncate">{formatMoney(monthTotals.exp.toNumber())}</div>
-              <div className="text-[10px] sm:text-[11px] text-white/60">{monthTotals.expN} rec</div>
+          {/* Inline stats — 3 columns, ultra compact */}
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            <div className="rounded-lg bg-white/10 backdrop-blur px-2 py-1.5 border border-white/10">
+              <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-white/60"><TrendingDown className="h-2.5 w-2.5" />SPEND</div>
+              <div className="font-bold text-xs sm:text-sm tabular leading-tight truncate">{formatMoney(monthTotals.exp.toNumber())}</div>
+              <div className="text-[8px] sm:text-[9px] text-white/45">{monthTotals.expN} tx</div>
             </div>
-            <div className="rounded-xl bg-white/10 backdrop-blur p-3 border border-white/15">
-              <div className="text-xs text-white/70 flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" /> INCOME</div>
-              <div className="font-bold text-sm sm:text-lg tabular mt-0.5 truncate">{formatMoney(monthTotals.inc.toNumber())}</div>
-              <div className="text-[10px] sm:text-[11px] text-white/60">{monthTotals.incN} rec</div>
+            <div className="rounded-lg bg-white/10 backdrop-blur px-2 py-1.5 border border-white/10">
+              <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-white/60"><TrendingUp className="h-2.5 w-2.5" />EARN</div>
+              <div className="font-bold text-xs sm:text-sm tabular leading-tight truncate">{formatMoney(monthTotals.inc.toNumber())}</div>
+              <div className="text-[8px] sm:text-[9px] text-white/45">{monthTotals.incN} tx</div>
             </div>
-            <div className="rounded-xl bg-white text-violet-700 p-3 shadow-md">
-              <div className="text-xs text-violet-600/70 flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> BALANCE</div>
-              <div className="font-bold text-sm sm:text-lg tabular mt-0.5 truncate">{formatMoney(sums.bal.toNumber())}</div>
-              <div className="text-[10px] sm:text-[11px] text-violet-600/60 truncate">{accounts?.length ?? 0} ledgers</div>
+            <div className="rounded-lg bg-white px-2 py-1.5 shadow-sm">
+              <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-violet-500"><Sparkles className="h-2.5 w-2.5" />NET</div>
+              <div className="font-bold text-xs sm:text-sm tabular leading-tight truncate text-violet-700">{formatMoney(sums.bal.toNumber())}</div>
+              <div className="text-[8px] sm:text-[9px] text-violet-400">{accounts?.length ?? 0} ledgers</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Month nav + filters — all working */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-full border bg-card p-1 shrink-0">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full" onClick={() => shift(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-            <span className="min-w-[100px] sm:min-w-[140px] text-center text-xs sm:text-sm font-semibold capitalize px-1 sm:px-2">{monthLabel}</span>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full" onClick={() => shift(1)}><ChevronRight className="h-4 w-4" /></Button>
-          </div>
-          {ym.y !== now0.getFullYear() || ym.m !== now0.getMonth() ? (
-            <Button variant="outline" size="sm" className="h-7 sm:h-8 rounded-full text-[10px] sm:text-xs gap-1" onClick={() => setYm({ y: now0.getFullYear(), m: now0.getMonth() })}><CalendarClock className="h-3 w-3" />Today</Button>
-          ) : null}
-          <div className="relative flex-1 min-w-0 ml-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Search" value={q} onChange={(e)=>setQ(e.target.value)} className="pl-8 h-8 sm:h-9 text-sm rounded-full bg-card" />
-          </div>
+      {/* Compact Filter Bar */}
+      <div className="flex items-center gap-1.5">
+        <div className="flex items-center rounded-full border bg-card p-0.5 shrink-0">
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" onClick={() => shift(-1)}><ChevronLeft className="h-3.5 w-3.5" /></Button>
+          <span className="min-w-[80px] sm:min-w-[110px] text-center text-[10px] sm:text-xs font-semibold capitalize">{monthLabel}</span>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" onClick={() => shift(1)}><ChevronRight className="h-3.5 w-3.5" /></Button>
         </div>
-        <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="h-8 sm:h-9 text-xs sm:text-sm rounded-full bg-card w-full sm:w-auto sm:max-w-[200px]"><option value="all">All Categories</option><option value="none">None</option>{cats?.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+        {ym.y !== now0.getFullYear() || ym.m !== now0.getMonth() ? (
+          <Button variant="outline" size="sm" className="h-6 rounded-full text-[9px] sm:text-[10px] px-2 gap-0.5" onClick={() => setYm({ y: now0.getFullYear(), m: now0.getMonth() })}><CalendarClock className="h-2.5 w-2.5" />Now</Button>
+        ) : null}
+        <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="h-6 text-[10px] sm:text-xs rounded-full border bg-card px-2 appearance-none cursor-pointer text-muted-foreground">
+          <option value="all">All</option><option value="none">None</option>{cats?.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <div className="relative flex-1 min-w-0 ml-auto">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <input placeholder="Search" value={q} onChange={(e)=>setQ(e.target.value)} className="w-full pl-6 h-6 text-[10px] sm:text-xs rounded-full border bg-card outline-none focus:ring-1 focus:ring-ring" />
+        </div>
       </div>
 
-      {/* Accounts — BudgetApp premium cards, all working */}
+      {/* Compact Account Pills */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold">Ledger Accounts</h3>
-          <span className="text-xs text-muted-foreground">{accounts?.length ?? 0} • Tap to filter • + to create</span>
-        </div>
-        <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory scroll-smooth">
-          <button onClick={() => setAccFilter("all")} className={cn("shrink-0 snap-start rounded-2xl p-3 sm:p-4 text-left min-w-[130px] sm:min-w-[160px] border-2 transition-all", accFilter==="all" ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white border-violet-500 shadow-lg sm:scale-[1.02]" : "bg-card border-border hover:border-primary/30")}>
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 text-white flex items-center justify-center mb-2"><Wallet className="h-4 w-4" /></div>
-            <div className="font-bold text-xs sm:text-sm">All Ledgers</div><div className="tabular font-bold text-xs sm:text-sm truncate">{formatMoney(totalBalance.toNumber())}</div><div className="text-[10px] sm:text-xs opacity-70">{filtered.length} this mo.</div>
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-0.5 px-0.5 snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none" }}>
+          <button onClick={() => setAccFilter("all")} className={cn("shrink-0 snap-start rounded-xl px-3 py-2 text-left min-w-[90px] border transition-all", accFilter==="all" ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white border-violet-500 shadow-md" : "bg-card border-border hover:border-primary/30")}>
+            <div className="text-[9px] sm:text-[10px] font-bold">ALL</div>
+            <div className="tabular font-bold text-[10px] sm:text-xs truncate">{formatMoney(totalBalance.toNumber())}</div>
+            <div className="text-[8px] sm:text-[9px] opacity-60">{filtered.length} tx</div>
           </button>
           {accounts?.map((a) => {
             const Icon = ICONS[a.icon] ?? Wallet;
             const bal = balances.get(a.id) ?? new Decimal(0);
             const active = accFilter===a.id;
             return (
-              <button key={a.id} onClick={() => setAccFilter(active ? "all" : a.id)} className={cn("shrink-0 snap-start rounded-2xl p-3 sm:p-4 text-left min-w-[130px] sm:min-w-[160px] border-2 transition-all relative group/acct", active ? "bg-card border-violet-500 shadow-lg sm:scale-[1.02]" : "bg-card border-border hover:shadow-md")}>
-                <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center mb-2 text-white bg-gradient-to-br", GRAD[a.color] ?? GRAD.blue)}><Icon className="h-4 w-4" /></div>
-                <div className="font-bold text-xs sm:text-sm truncate">{a.name}</div>
-                <div className="tabular font-bold text-xs sm:text-sm text-primary truncate">{formatMoney(bal.toNumber())}</div>
-                <div className="text-[10px] sm:text-xs text-muted-foreground truncate">Init {formatMoney(Number(a.initial_balance))}</div>
-                <button onClick={(ev) => { ev.stopPropagation(); setConfirmDelete("acc:" + a.id); }} className="hidden group-hover/acct:flex absolute top-2 right-2 h-5 w-5 rounded-md bg-destructive/10 text-destructive items-center justify-center hover:bg-destructive/20 transition-colors"><Trash2 className="h-3 w-3" /></button>
+              <button key={a.id} onClick={() => setAccFilter(active ? "all" : a.id)} className={cn("shrink-0 snap-start rounded-xl px-3 py-2 text-left min-w-[90px] border transition-all relative group/acct", active ? "bg-card border-violet-500 shadow-md" : "bg-card border-border hover:shadow-sm")}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className={cn("h-4 w-4 rounded flex items-center justify-center text-white bg-gradient-to-br shrink-0", GRAD[a.color] ?? GRAD.blue)}><Icon className="h-2.5 w-2.5" /></span>
+                  <span className="font-bold text-[9px] sm:text-[10px] truncate">{a.name}</span>
+                </div>
+                <div className="tabular font-bold text-[10px] sm:text-xs text-primary truncate">{formatMoney(bal.toNumber())}</div>
+                <button onClick={(ev) => { ev.stopPropagation(); setConfirmDelete("acc:" + a.id); }} className="hidden group-hover/acct:flex absolute top-1 right-1 h-4 w-4 rounded bg-destructive/10 text-destructive items-center justify-center"><Trash2 className="h-2.5 w-2.5" /></button>
               </button>
             );
           })}
-          <button onClick={() => setShowAcc(true)} className="shrink-0 snap-start rounded-2xl border-2 border-dashed border-border p-3 sm:p-4 min-w-[110px] sm:min-w-[140px] flex flex-col items-center justify-center gap-1 hover:border-primary/40 hover:bg-accent/50 transition-colors">
-            <span className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><Plus className="h-5 w-5" /></span>
-            <span className="text-xs sm:text-sm font-medium">New Ledger</span><span className="text-[10px] sm:text-xs text-muted-foreground">BCA • Cash • Savings</span>
+          <button onClick={() => setShowAcc(true)} className="shrink-0 snap-start rounded-xl border border-dashed border-border p-2 min-w-[70px] flex flex-col items-center justify-center gap-0.5 hover:border-primary/40 transition-colors">
+            <span className="h-5 w-5 rounded bg-primary/10 text-primary flex items-center justify-center"><Plus className="h-3 w-3" /></span>
+            <span className="text-[8px] sm:text-[9px] font-medium text-muted-foreground">Add</span>
           </button>
         </div>
       </div>
 
-      {/* Transactions — grouped, BudgetApp cards, all buttons work */}
-      <div className="space-y-3">
+      {/* Ultra-Compact Transactions */}
+      <div className="space-y-1.5">
         {grouped.length===0 ? (
-          <Card className="border-dashed"><CardContent className="py-12 text-center space-y-3 animate-fade-up">
-            <div className="mx-auto h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center text-white shadow-lg"><Wallet className="h-6 w-6" /></div>
-            <div className="font-semibold">No transactions this month</div>
-            <div className="text-sm text-muted-foreground max-w-xs mx-auto">Track your daily spending, income, and transfers between ledgers.</div>
-            <div className="flex flex-col sm:flex-row justify-center gap-2 pt-2">
-              <Button onClick={()=>openAdd("expense")} variant="outline" size="sm"><ArrowDownCircle className="h-3.5 w-3.5 mr-1" /> Expense</Button>
-              <Button onClick={()=>openAdd("income")} size="sm" className="bg-emerald-600 hover:bg-emerald-700"><ArrowUpCircle className="h-3.5 w-3.5 mr-1" /> Income</Button>
-              <Button onClick={()=>openAdd("transfer")} variant="secondary" size="sm"><ArrowLeftRight className="h-3.5 w-3.5 mr-1" /> Transfer</Button>
+          <div className="rounded-xl border border-dashed p-6 text-center space-y-2 animate-fade-up">
+            <div className="mx-auto h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center text-white shadow-md"><Wallet className="h-5 w-5" /></div>
+            <div className="font-semibold text-sm">No transactions this month</div>
+            <div className="text-xs text-muted-foreground">Track spending, income & transfers</div>
+            <div className="flex flex-col gap-1.5 pt-1">
+              <Button onClick={()=>openAdd("expense")} variant="outline" size="sm" className="h-7 text-xs"><ArrowDownCircle className="h-3 w-3 mr-1" />Expense</Button>
+              <Button onClick={()=>openAdd("income")} size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700"><ArrowUpCircle className="h-3 w-3 mr-1" />Income</Button>
+              <Button onClick={()=>openAdd("transfer")} variant="secondary" size="sm" className="h-7 text-xs"><ArrowLeftRight className="h-3 w-3 mr-1" />Transfer</Button>
             </div>
-            <div className="pt-3 flex flex-wrap justify-center gap-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> Expenses reduce balance</span>
-              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Income increases it</span>
-              <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> Transfers move between ledgers</span>
-            </div>
-          </CardContent></Card>
+          </div>
         ) : grouped.map(([date, items]) => {
           const d = new Date(date);
-          const label = isNaN(d.getTime()) ? date : d.toLocaleDateString(dateLocale(lang), { weekday: "long", day: "numeric", month: "short", year: "numeric" });
+          const label = isNaN(d.getTime()) ? date : d.toLocaleDateString(dateLocale(lang), { weekday: "short", day: "numeric", month: "short" });
+          const dayTotal = items.reduce((s,e) => {
+            const a = Number(e.amount ?? 0);
+            return s + (e.direction === "expense" ? -a : e.direction === "income" ? a : 0);
+          }, 0);
           return (
-            <div key={date} className="space-y-2">
-              <div className="sticky top-[52px] sm:top-0 z-10 bg-background/90 backdrop-blur-sm px-1 py-1.5 flex items-center gap-2">
-                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground truncate">{label}</span>
-                <span className="h-px flex-1 bg-border" />
-                <span className="text-xs text-muted-foreground">{items.length} • {formatMoney(items.reduce((s,e)=>s+Number(e.amount??0),0))}</span>
+            <div key={date}>
+              <div className="sticky top-[48px] sm:top-0 z-10 bg-background/90 backdrop-blur-sm px-0.5 py-1 flex items-center gap-1.5">
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">{label}</span>
+                <span className="h-px flex-1 bg-border/60" />
+                <span className="text-[8px] sm:text-[9px] text-muted-foreground tabular shrink-0">{items.length} • {dayTotal >= 0 ? "+" : ""}{formatMoney(Math.abs(dayTotal))}</span>
               </div>
-              <div className="grid gap-2">
+              <div className="space-y-0.5">
                 {items.map((e) => {
                   const cat = catById(e.category_id);
                   const acc = accById(e.account_id);
@@ -346,42 +340,29 @@ export default function Space() {
                   const isTransfer = e.direction === "transfer";
                   const Icon = isTransfer ? ArrowLeftRight : catIcon(cat?.name ?? e.title);
                   const iconGrad = isTransfer ? "from-blue-500 to-cyan-500" : e.direction === "income" ? "from-emerald-500 to-teal-500" : cat ? GRAD[cat.color] ?? GRAD.slate : "from-rose-500 to-pink-500";
-                  const amountColor = isTransfer ? "text-blue-600" : e.direction === "income" ? "text-emerald-600" : "text-rose-600";
-                  return (
-                    <SwipeRow key={e.id} actions={[{ label: "Delete", kind: "destructive", onClick: () => setConfirmDelete(e.id) }]}>
-                    <Card className="overflow-hidden hover:shadow-md transition-shadow group">
-                      <CardContent className="p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3">
-                        <span className={cn("h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl flex items-center justify-center text-white shrink-0 bg-gradient-to-br shadow-sm", iconGrad)}><Icon className="h-4 w-4 sm:h-5 sm:w-5" /></span>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-xs sm:text-sm truncate">{e.title}{isTransfer && <Badge variant="secondary" className="text-[9px] sm:text-[10px] h-4 sm:h-5 ml-1 align-middle">Transfer</Badge>}</div>
-                          {cat && <div className="text-[10px] sm:text-[11px] text-muted-foreground truncate mt-0.5">{cat.name}</div>}
-                          <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs mt-0.5 truncate">
-                            {isTransfer ? (
-                              <>
-                                <Badge variant="outline" className="h-5 gap-1 bg-muted/50"><Wallet className="h-3 w-3" />{acc?.name ?? "?"}</Badge>
-                                <ArrowLeftRight className="h-3 w-3 text-muted-foreground" />
-                                <Badge variant="outline" className="h-5 gap-1 bg-muted/50"><Wallet className="h-3 w-3" />{toAcc?.name ?? "?"}</Badge>
-                              </>
-                            ) : (
-                              <Badge variant="outline" className="h-5 gap-1 bg-muted/50"><CreditCard className="h-3 w-3" />{acc?.name ?? "No ledger"}</Badge>
-                            )}
-                            {e.body && <span className="truncate text-muted-foreground">“{e.body}”</span>}
-                          </div>
+                                    return (
+                    <SwipeRow key={e.id} actions={[{ label: "Del", kind: "destructive", onClick: () => setConfirmDelete(e.id) }]}>
+                    <div className="flex items-center gap-2 py-1.5 px-1 rounded-lg hover:bg-muted/40 active:bg-muted/60 transition-colors group cursor-pointer" onClick={() => openEdit(e)}>
+                      <span className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-lg flex items-center justify-center text-white shrink-0 bg-gradient-to-br shadow-sm", iconGrad)}><Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" /></span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium text-[11px] sm:text-xs truncate">{e.title}</span>
+                          {isTransfer && <Badge variant="secondary" className="text-[7px] sm:text-[8px] h-3.5 px-1 shrink-0">↔</Badge>}
                         </div>
-                        <div className="text-right shrink-0 pl-1">
-                          <div className={cn("font-bold text-xs sm:text-sm tabular", amountColor)}>{e.direction === "expense" ? "-" : e.direction === "income" ? "+" : ""}{formatMoney(Number(e.amount ?? 0))}</div>
-                          <div className="text-[9px] sm:text-[11px] text-muted-foreground">{new Date(e.entry_date).toLocaleDateString(dateLocale(lang), { day:"2-digit", month:"short" })}</div>
+                        <div className="flex items-center gap-1 text-[8px] sm:text-[9px] text-muted-foreground mt-0.5">
+                          {isTransfer ? (
+                            <span className="truncate">{acc?.name ?? "?"} → {toAcc?.name ?? "?"}</span>
+                          ) : (
+                            <span className="truncate">{cat?.name ?? ""}{cat && acc?.name ? " · " : ""}{acc?.name ?? "No ledger"}</span>
+                          )}
                         </div>
-                        <div className="hidden sm:flex gap-1 shrink-0">
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={()=>openEdit(e)}><PencilLine className="h-4 w-4" /></Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50" onClick={()=>delTx.mutate(e.id)}><Trash2 className="h-4 w-4" /></Button>
-                        </div>
-                        <div className="sm:hidden flex gap-1.5">
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={()=>openEdit(e)}><PencilLine className="h-3.5 w-3.5" /></Button>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50" onClick={()=>setConfirmDelete(e.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                      <div className="text-right shrink-0 pl-1">
+                        <div className={cn("font-bold text-[10px] sm:text-xs tabular", isTransfer ? "text-blue-600" : e.direction === "income" ? "text-emerald-600" : "text-rose-600")}>{e.direction === "expense" ? "−" : e.direction === "income" ? "+" : ""}{formatMoney(Number(e.amount ?? 0))}</div>
+                        <div className="text-[7px] sm:text-[8px] text-muted-foreground">{new Date(e.entry_date).toLocaleDateString(dateLocale(lang), { day:"2-digit", month:"short" })}</div>
+                      </div>
+                      <button onClick={(ev) => { ev.stopPropagation(); setConfirmDelete(e.id); }} className="shrink-0 h-6 w-6 rounded flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3 w-3" /></button>
+                    </div>
                     </SwipeRow>
                   );
                 })}
@@ -391,83 +372,83 @@ export default function Space() {
         })}
       </div>
 
-      {/* FAB — works */}
-      <button onClick={()=>openAdd("expense")} className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] right-4 z-20 h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-xl flex items-center justify-center active:scale-90 transition-transform" aria-label="Add transaction">
-        <Plus className="h-5 w-5 sm:h-7 sm:w-7" />
+      {/* FAB */}
+      <button onClick={()=>openAdd("expense")} className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-3 z-20 h-11 w-11 sm:h-12 sm:w-12 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center active:scale-90 transition-transform" aria-label="Add transaction">
+        <Plus className="h-5 w-5" />
       </button>
 
-      {/* Add/Edit Dialog — all fields work */}
+      {/* Add/Edit Dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogHeader>
-          <DialogTitle>{editing ? "Edit Transaction" : "Add Transaction"}</DialogTitle>
-          <DialogDescription>BudgetApp Premium — Income, Expense or Transfer between your ledgers</DialogDescription>
+        <DialogHeader className="p-4 pb-2 sm:p-6 sm:pb-4">
+          <DialogTitle className="text-base sm:text-lg">{editing ? "Edit Transaction" : "New Transaction"}</DialogTitle>
         </DialogHeader>
-        <DialogContent>
-          <div className="flex rounded-full bg-muted p-0.5 sm:p-1 mb-2">
+        <DialogContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-3">
+          <div className="flex rounded-full bg-muted p-0.5">
             {(["expense","income","transfer"] as const).map((k) => (
-              <button key={k} onClick={()=>setTxType(k)} className={cn("flex-1 rounded-full py-2 text-sm font-medium capitalize flex items-center justify-center gap-1.5", txType===k ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground")}>
-                {k==="expense" ? <ArrowDownCircle className="h-4 w-4" /> : k==="income" ? <ArrowUpCircle className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />}{k}
+              <button key={k} onClick={()=>{setTxType(k); setFormErr(null);}} className={cn("flex-1 rounded-full py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium capitalize flex items-center justify-center gap-1 transition-all", txType===k ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground")}>
+                {k==="expense" ? <ArrowDownCircle className="h-3 w-3" /> : k==="income" ? <ArrowUpCircle className="h-3 w-3" /> : <ArrowLeftRight className="h-3 w-3" />}{k}
               </button>
             ))}
           </div>
-          <div className="grid gap-3">
-            <div><Label>Title</Label><Input value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} placeholder="e.g. Groceries, Salary, BCA → Cash" className="h-10 sm:h-auto" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Category</Label><Select value={form.category_id} onChange={(e)=>setForm({...form,category_id:e.target.value})}><option value="">None</option>{cats?.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select></div>
-              <div><Label>Date</Label><Input type="date" value={form.entry_date} onChange={(e)=>setForm({...form,entry_date:e.target.value})} /></div>
+          <div className="space-y-2.5">
+            <div><Label className="text-xs">Title</Label><Input value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} placeholder="e.g. Groceries, Salary" className="h-9 text-sm mt-1" /></div>
+            <div><Label className="text-xs">Amount (IDR)</Label><Input value={form.amount} onChange={(e)=>setForm({...form,amount:e.target.value})} inputMode="decimal" placeholder="50000" className="h-9 text-base font-semibold tabular mt-1" /></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-xs">Category</Label><Select value={form.category_id} onChange={(e)=>setForm({...form,category_id:e.target.value})} className="h-9 text-xs mt-1"><option value="">None</option>{cats?.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</Select></div>
+              <div><Label className="text-xs">Date</Label><Input type="date" value={form.entry_date} onChange={(e)=>setForm({...form,entry_date:e.target.value})} className="h-9 text-xs mt-1" /></div>
             </div>
-            <div><Label>Amount (IDR)</Label><Input value={form.amount} onChange={(e)=>setForm({...form,amount:e.target.value})} inputMode="decimal" placeholder="50000" className="tabular h-10 sm:h-auto text-lg font-semibold" /></div>
             {txType === "transfer" ? (
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>From Ledger</Label><Select value={form.account_id} onChange={(e)=>setForm({...form,account_id:e.target.value})}><option value="">Select</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name} — {formatMoney((balances.get(a.id) ?? new Decimal(0)).toNumber())}</option>)}</Select></div>
-                <div><Label>To Ledger</Label><Select value={form.to_account_id} onChange={(e)=>setForm({...form,to_account_id:e.target.value})}><option value="">Select</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name}</option>)}</Select></div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label className="text-xs">From</Label><Select value={form.account_id} onChange={(e)=>setForm({...form,account_id:e.target.value})} className="h-9 text-xs mt-1"><option value="">Select</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name} — {formatMoney((balances.get(a.id) ?? new Decimal(0)).toNumber())}</option>)}</Select></div>
+                <div><Label className="text-xs">To</Label><Select value={form.to_account_id} onChange={(e)=>setForm({...form,to_account_id:e.target.value})} className="h-9 text-xs mt-1"><option value="">Select</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name}</option>)}</Select></div>
               </div>
             ) : (
-              <div><Label>Ledger Account</Label><Select value={form.account_id} onChange={(e)=>setForm({...form,account_id:e.target.value})}><option value="">Select ledger</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name} — {formatMoney((balances.get(a.id) ?? new Decimal(0)).toNumber())}</option>)}</Select></div>
+              <div><Label className="text-xs">Ledger</Label><Select value={form.account_id} onChange={(e)=>setForm({...form,account_id:e.target.value})} className="h-9 text-xs mt-1"><option value="">Select ledger</option>{accounts?.map((a)=><option key={a.id} value={a.id}>{a.name} — {formatMoney((balances.get(a.id) ?? new Decimal(0)).toNumber())}</option>)}</Select></div>
             )}
-            <div><Label>Note</Label><Textarea value={form.body} onChange={(e)=>setForm({...form,body:e.target.value})} placeholder="e.g. ganti Flazz trip" rows={2} /></div>
+            <div><Label className="text-xs">Note</Label><Textarea value={form.body} onChange={(e)=>setForm({...form,body:e.target.value})} placeholder="Optional note" rows={1} className="text-xs mt-1 resize-none" /></div>
           </div>
-          {formErr && <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2 text-sm text-destructive">{formErr}</div>}
-          <div className="flex justify-end gap-2 pt-3">
-            <Button variant="outline" onClick={()=>setShowAdd(false)}>Cancel</Button>
-            <Button onClick={()=>saveTx.mutate()} disabled={saveTx.isPending}>{editing ? "Save" : "Add"} {txType}</Button>
+          {formErr && <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-2.5 py-1.5 text-xs text-destructive">{formErr}</div>}
+          <div className="flex justify-end gap-2 pt-1 pb-1">
+            <Button variant="outline" size="sm" onClick={()=>setShowAdd(false)} className="h-8 text-xs">Cancel</Button>
+            <Button size="sm" onClick={()=>saveTx.mutate()} disabled={saveTx.isPending} className="h-8 text-xs">{editing ? "Save" : "Add"} {txType}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Add Account Dialog — works */}
+      {/* New Account Dialog */}
       <Dialog open={showAcc} onOpenChange={setShowAcc}>
-        <DialogHeader><DialogTitle>New Ledger Account</DialogTitle><DialogDescription>Create BCA, Cash, Savings… each tracks its own balance</DialogDescription></DialogHeader>
-        <DialogContent>
-          <div className="grid gap-3">
-            <div><Label>Name</Label><Input value={newAcc.name} onChange={(e)=>setNewAcc({...newAcc,name:e.target.value})} placeholder="BCA / Cash / Entertainment" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Icon</Label><Select value={newAcc.icon} onChange={(e)=>setNewAcc({...newAcc,icon:e.target.value})}><option value="wallet">Wallet</option><option value="bca">BCA</option><option value="cash">Cash</option><option value="bank">Bank</option><option value="investment">Investment</option></Select></div>
-              <div><Label>Color</Label><Select value={newAcc.color} onChange={(e)=>setNewAcc({...newAcc,color:e.target.value})}><option value="blue">Blue</option><option value="violet">Violet</option><option value="emerald">Emerald</option><option value="amber">Amber</option><option value="rose">Rose</option><option value="slate">Slate</option></Select></div>
-            </div>
-            <div><Label>Initial Balance (IDR)</Label><Input value={newAcc.initial_balance} onChange={(e)=>setNewAcc({...newAcc,initial_balance:e.target.value})} inputMode="decimal" placeholder="0" /></div>
+        <DialogHeader className="p-4 pb-2 sm:p-6 sm:pb-4">
+          <DialogTitle className="text-base sm:text-lg">New Ledger Account</DialogTitle>
+          <DialogDescription className="text-xs">Track BCA, Cash, Savings…</DialogDescription>
+        </DialogHeader>
+        <DialogContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-2.5">
+          <div><Label className="text-xs">Name</Label><Input value={newAcc.name} onChange={(e)=>setNewAcc({...newAcc,name:e.target.value})} placeholder="BCA / Cash / Savings" className="h-9 text-sm mt-1" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label className="text-xs">Icon</Label><Select value={newAcc.icon} onChange={(e)=>setNewAcc({...newAcc,icon:e.target.value})} className="h-9 text-xs mt-1"><option value="wallet">Wallet</option><option value="bca">BCA</option><option value="cash">Cash</option><option value="bank">Bank</option><option value="investment">Invest</option></Select></div>
+            <div><Label className="text-xs">Color</Label><Select value={newAcc.color} onChange={(e)=>setNewAcc({...newAcc,color:e.target.value})} className="h-9 text-xs mt-1"><option value="blue">Blue</option><option value="violet">Violet</option><option value="emerald">Green</option><option value="amber">Amber</option><option value="rose">Rose</option><option value="slate">Slate</option></Select></div>
           </div>
-          <div className="flex justify-end gap-2 pt-3">
-            <Button variant="outline" onClick={()=>setShowAcc(false)}>Cancel</Button>
-            <Button onClick={()=>createAcc.mutate()} disabled={createAcc.isPending}>Create Ledger</Button>
+          <div><Label className="text-xs">Initial Balance (IDR)</Label><Input value={newAcc.initial_balance} onChange={(e)=>setNewAcc({...newAcc,initial_balance:e.target.value})} inputMode="decimal" placeholder="0" className="h-9 text-sm mt-1" /></div>
+          <div className="flex justify-end gap-2 pt-1 pb-1">
+            <Button variant="outline" size="sm" onClick={()=>setShowAcc(false)} className="h-8 text-xs">Cancel</Button>
+            <Button size="sm" onClick={()=>createAcc.mutate()} disabled={createAcc.isPending} className="h-8 text-xs">Create</Button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(null); }}>
-        <DialogHeader>
-          <DialogTitle>{confirmDelete?.startsWith("acc:") ? "Delete Account" : "Delete Transaction"}</DialogTitle>
-          <DialogDescription>{confirmDelete?.startsWith("acc:") ? "This will permanently remove this ledger account and cannot be undone." : "This action cannot be undone. The transaction will be permanently removed from your ledger."}</DialogDescription>
+        <DialogHeader className="p-4 pb-2 sm:p-6 sm:pb-4">
+          <DialogTitle className="text-base sm:text-lg">{confirmDelete?.startsWith("acc:") ? "Delete Account" : "Delete Transaction"}</DialogTitle>
+          <DialogDescription className="text-xs">{confirmDelete?.startsWith("acc:") ? "Remove this ledger permanently?" : "This cannot be undone."}</DialogDescription>
         </DialogHeader>
-        <DialogContent>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => {
+        <DialogContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+          <div className="flex justify-end gap-2 pb-1">
+            <Button variant="outline" size="sm" onClick={() => setConfirmDelete(null)} className="h-8 text-xs">Cancel</Button>
+            <Button variant="destructive" size="sm" onClick={() => {
               if (!confirmDelete) return;
               if (confirmDelete.startsWith("acc:")) { delAcc.mutate(confirmDelete.slice(4)); }
               else { delTx.mutate(confirmDelete); }
-            }} disabled={delTx.isPending || delAcc.isPending}>{(delTx.isPending || delAcc.isPending) ? "Deleting…" : "Delete"}</Button>
+            }} disabled={delTx.isPending || delAcc.isPending} className="h-8 text-xs">{(delTx.isPending || delAcc.isPending) ? "Deleting…" : "Delete"}</Button>
           </div>
         </DialogContent>
       </Dialog>
